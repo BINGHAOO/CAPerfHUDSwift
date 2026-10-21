@@ -45,7 +45,13 @@ fi
 
 # Add entitlements
 echo "[*] Adding entitlements"
-ldid -S"$WORKING_LOCATION/$APPLICATION_NAME/$APPLICATION_NAME.entitlements" "$TARGET_APP/$APPLICATION_NAME"
+ENTITLEMENTS_FILE=$(find "$WORKING_LOCATION/$APPLICATION_NAME" -maxdepth 1 -name "*.entitlements" | head -n 1)
+if [ -z "$ENTITLEMENTS_FILE" ]; then
+    echo "[!] No entitlements file found, skipping"
+else
+    echo "[*] Using entitlements: $ENTITLEMENTS_FILE"
+    ldid -S"$ENTITLEMENTS_FILE" "$TARGET_APP/$APPLICATION_NAME"
+fi
 
 #echo "[*] Building RootHelper..."
 #cd $WORKING_LOCATION/RootHelper
@@ -79,4 +85,7 @@ fi
 zip -vr $APPLICATION_NAME.tipa Payload
 rm -rf $APPLICATION_NAME.app
 rm -rf Payload
+
+echo "[*] Build complete: $WORKING_LOCATION/build/$APPLICATION_NAME.tipa"
+ls -la "$WORKING_LOCATION/build/$APPLICATION_NAME.tipa"
 

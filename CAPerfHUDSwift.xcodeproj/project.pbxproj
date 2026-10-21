@@ -15,6 +15,10 @@
 		D694918A2B312664004FA859 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D69491892B312664004FA859 /* QuartzCore.framework */; };
 		D694918C2B31267A004FA859 /* libswiftQuartzCore.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D694918B2B312669004FA859 /* libswiftQuartzCore.tbd */; };
 		D694918E2B31296C004FA859 /* CADebugCommon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D694918D2B31296C004FA859 /* CADebugCommon.swift */; };
+		D69491A12B31296C004FA859 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69491A02B31296C004FA859 /* Localization.swift */; };
+		D69491A32B31296C004FA859 /* HudSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69491A22B31296C004FA859 /* HudSettings.swift */; };
+		D69491A52B31296C004FA859 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69491A42B31296C004FA859 /* SettingsView.swift */; };
+		D69491A72B31296C004FA859 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69491A62B31296C004FA859 /* AboutView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +51,10 @@
 		D694918B2B312669004FA859 /* libswiftQuartzCore.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libswiftQuartzCore.tbd; path = usr/lib/swift/libswiftQuartzCore.tbd; sourceTree = SDKROOT; };
 		D694918D2B31296C004FA859 /* CADebugCommon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CADebugCommon.swift; sourceTree = "<group>"; };
 		D69491902B312FA5004FA859 /* libswiftDarwin.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libswiftDarwin.tbd; path = usr/lib/swift/libswiftDarwin.tbd; sourceTree = SDKROOT; };
+		D69491A02B31296C004FA859 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
+		D69491A22B31296C004FA859 /* HudSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HudSettings.swift; sourceTree = "<group>"; };
+		D69491A42B31296C004FA859 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		D69491A62B31296C004FA859 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +109,10 @@
 				D694915C2B312582004FA859 /* CAPerfHUDSwiftApp.swift */,
 				D694915E2B312582004FA859 /* ContentView.swift */,
 				D694918D2B31296C004FA859 /* CADebugCommon.swift */,
+				D69491A02B31296C004FA859 /* Localization.swift */,
+				D69491A22B31296C004FA859 /* HudSettings.swift */,
+				D69491A42B31296C004FA859 /* SettingsView.swift */,
+				D69491A62B31296C004FA859 /* AboutView.swift */,
 				D69491862B3125D7004FA859 /* CAPerfHudSwift.entitlements */,
 				D69491602B312588004FA859 /* Assets.xcassets */,
 				D69491622B312588004FA859 /* Preview Content */,
@@ -211,6 +223,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = D69491502B312582004FA859;
@@ -260,6 +273,10 @@
 				D694918E2B31296C004FA859 /* CADebugCommon.swift in Sources */,
 				D694915F2B312582004FA859 /* ContentView.swift in Sources */,
 				D694915D2B312582004FA859 /* CAPerfHUDSwiftApp.swift in Sources */,
+				D69491A12B31296C004FA859 /* Localization.swift in Sources */,
+				D69491A32B31296C004FA859 /* HudSettings.swift in Sources */,
+				D69491A52B31296C004FA859 /* SettingsView.swift in Sources */,
+				D69491A72B31296C004FA859 /* AboutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -428,7 +445,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -437,7 +454,7 @@
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/swift",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ca.bomberfish.CAPerfHudSwift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -466,7 +483,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -475,7 +492,7 @@
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/swift",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ca.bomberfish.CAPerfHudSwift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
