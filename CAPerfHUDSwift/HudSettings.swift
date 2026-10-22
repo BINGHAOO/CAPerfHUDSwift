@@ -5,94 +5,116 @@
 import Foundation
 import SwiftUI
 
-/// Manages all HUD appearance settings with persistence to UserDefaults.
+/// Manages all HUD settings with optional persistence to UserDefaults.
+///
+/// Appearance values drive the in-app `HudOverlayView`. The system Core
+/// Animation HUD only accepts a level, so it is not affected by them.
 final class HudSettings: ObservableObject {
     static let shared = HudSettings()
 
-    // MARK: - HUD Level (persisted)
+    // MARK: - HUD Level (system HUD)
     @Published var hudLevel: Int32 {
-        didSet { UserDefaults.standard.set(Int(hudLevel), forKey: "HUDLevel") }
+        didSet { save("HUDLevel", Int(hudLevel)) }
     }
 
     // MARK: - Window Size
     @Published var windowWidth: Double {
-        didSet { UserDefaults.standard.set(windowWidth, forKey: "HUDWindowWidth") }
+        didSet { save("HUDWindowWidth", windowWidth) }
     }
     @Published var windowHeight: Double {
-        didSet { UserDefaults.standard.set(windowHeight, forKey: "HUDWindowHeight") }
+        didSet { save("HUDWindowHeight", windowHeight) }
     }
 
     // MARK: - Position
     @Published var positionX: Double {
-        didSet { UserDefaults.standard.set(positionX, forKey: "HUDPositionX") }
+        didSet { save("HUDPositionX", positionX) }
     }
     @Published var positionY: Double {
-        didSet { UserDefaults.standard.set(positionY, forKey: "HUDPositionY") }
+        didSet { save("HUDPositionY", positionY) }
     }
 
     // MARK: - Typography & Colors
     @Published var fontSize: Double {
-        didSet { UserDefaults.standard.set(fontSize, forKey: "HUDFontSize") }
+        didSet { save("HUDFontSize", fontSize) }
     }
     @Published var backgroundOpacity: Double {
-        didSet { UserDefaults.standard.set(backgroundOpacity, forKey: "HUDBackgroundOpacity") }
+        didSet { save("HUDBackgroundOpacity", backgroundOpacity) }
     }
     @Published var cornerRadius: Double {
-        didSet { UserDefaults.standard.set(cornerRadius, forKey: "HUDCornerRadius") }
+        didSet { save("HUDCornerRadius", cornerRadius) }
     }
     @Published var textColorHex: String {
-        didSet { UserDefaults.standard.set(textColorHex, forKey: "HUDTextColor") }
+        didSet { save("HUDTextColor", textColorHex) }
     }
     @Published var bgColorHex: String {
-        didSet { UserDefaults.standard.set(bgColorHex, forKey: "HUDBgColor") }
+        didSet { save("HUDBgColor", bgColorHex) }
     }
 
     // MARK: - Border
     @Published var showBorder: Bool {
-        didSet { UserDefaults.standard.set(showBorder, forKey: "HUDShowBorder") }
+        didSet { save("HUDShowBorder", showBorder) }
     }
     @Published var borderWidth: Double {
-        didSet { UserDefaults.standard.set(borderWidth, forKey: "HUDBorderWidth") }
+        didSet { save("HUDBorderWidth", borderWidth) }
     }
 
     // MARK: - Behavior
     @Published var animateChanges: Bool {
-        didSet { UserDefaults.standard.set(animateChanges, forKey: "HUDAnimateChanges") }
+        didSet { save("HUDAnimateChanges", animateChanges) }
     }
+    /// Always persisted so the switch itself survives a relaunch.
     @Published var persistAcrossLaunches: Bool {
         didSet { UserDefaults.standard.set(persistAcrossLaunches, forKey: "HUDPersist") }
     }
     @Published var autoApplyOnLaunch: Bool {
-        didSet { UserDefaults.standard.set(autoApplyOnLaunch, forKey: "HUDAutoApply") }
+        didSet { save("HUDAutoApply", autoApplyOnLaunch) }
     }
     @Published var hapticFeedback: Bool {
-        didSet { UserDefaults.standard.set(hapticFeedback, forKey: "HUDHaptic") }
+        didSet { save("HUDHaptic", hapticFeedback) }
     }
 
-    // MARK: - Defaults
+    // MARK: - Init
     private init() {
-        let defaults = UserDefaults.standard
-        self.hudLevel = Int32(defaults.integer(forKey: "HUDLevel"))
+        let d = UserDefaults.standard
+        let persist = d.object(forKey: "HUDPersist") as? Bool ?? true
 
-        self.windowWidth = defaults.object(forKey: "HUDWindowWidth") as? Double ?? 220
-        self.windowHeight = defaults.object(forKey: "HUDWindowHeight") as? Double ?? 80
+        func storedDouble(_ key: String, _ fallback: Double) -> Double {
+            persist ? (d.object(forKey: key) as? Double ?? fallback) : fallback
+        }
+        func storedBool(_ key: String, _ fallback: Bool) -> Bool {
+            persist ? (d.object(forKey: key) as? Bool ?? fallback) : fallback
+        }
+        func storedString(_ key: String, _ fallback: String) -> String {
+            persist ? (d.string(forKey: key) ?? fallback) : fallback
+        }
 
-        self.positionX = defaults.object(forKey: "HUDPositionX") as? Double ?? 0
-        self.positionY = defaults.object(forKey: "HUDPositionY") as? Double ?? 0
+        self.persistAcrossLaunches = persist
+        self.hudLevel = persist ? Int32(d.integer(forKey: "HUDLevel")) : 0
 
-        self.fontSize = defaults.object(forKey: "HUDFontSize") as? Double ?? 12
-        self.backgroundOpacity = defaults.object(forKey: "HUDBackgroundOpacity") as? Double ?? 0.7
-        self.cornerRadius = defaults.object(forKey: "HUDCornerRadius") as? Double ?? 12
-        self.textColorHex = defaults.string(forKey: "HUDTextColor") ?? "#FFFFFF"
-        self.bgColorHex = defaults.string(forKey: "HUDBgColor") ?? "#000000"
+        self.windowWidth = storedDouble("HUDWindowWidth", 220)
+        self.windowHeight = storedDouble("HUDWindowHeight", 80)
 
-        self.showBorder = defaults.bool(forKey: "HUDShowBorder")
-        self.borderWidth = defaults.object(forKey: "HUDBorderWidth") as? Double ?? 1
+        self.positionX = storedDouble("HUDPositionX", 0)
+        self.positionY = storedDouble("HUDPositionY", 110)
 
-        self.animateChanges = defaults.object(forKey: "HUDAnimateChanges") as? Bool ?? true
-        self.persistAcrossLaunches = defaults.object(forKey: "HUDPersist") as? Bool ?? true
-        self.autoApplyOnLaunch = defaults.object(forKey: "HUDAutoApply") as? Bool ?? true
-        self.hapticFeedback = defaults.object(forKey: "HUDHaptic") as? Bool ?? true
+        self.fontSize = storedDouble("HUDFontSize", 13)
+        self.backgroundOpacity = storedDouble("HUDBackgroundOpacity", 0.65)
+        self.cornerRadius = storedDouble("HUDCornerRadius", 12)
+        self.textColorHex = storedString("HUDTextColor", "#FFFFFF")
+        self.bgColorHex = storedString("HUDBgColor", "#000000")
+
+        self.showBorder = storedBool("HUDShowBorder", false)
+        self.borderWidth = storedDouble("HUDBorderWidth", 1)
+
+        self.animateChanges = storedBool("HUDAnimateChanges", true)
+        self.autoApplyOnLaunch = storedBool("HUDAutoApply", true)
+        self.hapticFeedback = storedBool("HUDHaptic", true)
+    }
+
+    // MARK: - Persistence
+    private func save(_ key: String, _ value: Any) {
+        guard persistAcrossLaunches else { return }
+        UserDefaults.standard.set(value, forKey: key)
     }
 
     // MARK: - Reset
@@ -101,9 +123,9 @@ final class HudSettings: ObservableObject {
         windowWidth = 220
         windowHeight = 80
         positionX = 0
-        positionY = 0
-        fontSize = 12
-        backgroundOpacity = 0.7
+        positionY = 110
+        fontSize = 13
+        backgroundOpacity = 0.65
         cornerRadius = 12
         textColorHex = "#FFFFFF"
         bgColorHex = "#000000"
@@ -113,21 +135,6 @@ final class HudSettings: ObservableObject {
         persistAcrossLaunches = true
         autoApplyOnLaunch = true
         hapticFeedback = true
-    }
-
-    // MARK: - Apply to system HUD
-    /// Pushes the current appearance settings to the Core Animation render server.
-    /// The system HUD only honours a subset of these on certain iOS versions.
-    func applyAppearance() {
-        CADebugCommon.applyHudAppearance(
-            fontSize: fontSize,
-            positionX: positionX,
-            positionY: positionY,
-            windowWidth: windowWidth,
-            windowHeight: windowHeight,
-            backgroundOpacity: backgroundOpacity,
-            cornerRadius: cornerRadius
-        )
     }
 }
 

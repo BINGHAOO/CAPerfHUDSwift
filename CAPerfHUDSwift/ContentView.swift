@@ -11,28 +11,45 @@ struct ContentView: View {
 
     @State private var currentLevel: Int32 = 0
     @State private var showResetAlert = false
+    @State private var selectedTab = 0
 
     var body: some View {
-        TabView {
-            hudTab
-                .tabItem {
-                    Label(loc.string(.hud), systemImage: "gauge")
-                }
+        ZStack(alignment: .top) {
+            TabView(selection: $selectedTab) {
+                hudTab
+                    .tabItem {
+                        Label(loc.string(.hud), systemImage: "gauge")
+                    }
+                    .tag(0)
 
-            SettingsView()
-                .tabItem {
-                    Label(loc.string(.settings), systemImage: "slider.horizontal.3")
-                }
+                SettingsView()
+                    .tabItem {
+                        Label(loc.string(.settings), systemImage: "slider.horizontal.3")
+                    }
+                    .tag(1)
 
-            AboutView()
-                .tabItem {
-                    Label(loc.string(.about), systemImage: "info.circle")
-                }
+                AboutView()
+                    .tabItem {
+                        Label(loc.string(.about), systemImage: "info.circle")
+                    }
+                    .tag(2)
+            }
+
+            // The self-drawn HUD. Hidden on the Settings tab so the appearance
+            // preview there is the only visible instance.
+            if selectedTab != 1 {
+                HudOverlayView()
+                    .offset(x: settings.positionX, y: settings.positionY)
+                    .transition(.opacity)
+            }
         }
         .onAppear {
             currentLevel = CADebugCommon.getPerfHUDLevel()
-            if settings.autoApplyOnLaunch {
-                settings.applyAppearance()
+            PerformanceMonitor.shared.start()
+
+            if settings.autoApplyOnLaunch && settings.hudLevel > 0 {
+                CADebugCommon.setPerfHUDLevel(settings.hudLevel)
+                currentLevel = CADebugCommon.getPerfHUDLevel()
             }
         }
         .alert(loc.string(.resetTitle), isPresented: $showResetAlert) {
@@ -53,12 +70,20 @@ struct ContentView: View {
         NavigationView {
             List {
                 Section {
-                    quickToggleRow
+                    HStack {
+                        Text(loc.string(.currentLevel))
+                        Spacer()
+                        Text(levelName(for: Int(currentLevel)))
+                            .foregroundColor(.secondary)
+                    }
+                    Text(loc.string(.overlayHint))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
 
                 Section(loc.string(.selectHUDLevel)) {
-                    ForEach(Array(CADebugCommon.perfHUDLevelNames.enumerated()), id: \.offset) { index, name in
-                        levelRow(index: index, name: name)
+                    ForEach(Array(CADebugCommon.perfHUDLevelNames.enumerated()), id: \.offset) { pair in
+                        levelRow(index: pair.offset)
                     }
                 }
 
@@ -76,34 +101,7 @@ struct ContentView: View {
         .navigationViewStyle(.stack)
     }
 
-    private var quickToggleRow: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(loc.string(.quickToggle))
-                    .font(.headline)
-                Text("\(loc.string(.currentLevel)): \(levelDisplayName)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-            Toggle(isOn: Binding(
-                get: { currentLevel > 0 },
-                set: { newValue in
-                    if newValue {
-                        let saved = settings.hudLevel > 0 ? settings.hudLevel : 1
-                        applyLevel(saved)
-                    } else {
-                        applyLevel(0)
-                    }
-                }
-            )) {
-                EmptyView()
-            }
-            .labelsHidden()
-        }
-    }
-
-    private func levelRow(index: Int, name: String) -> some View {
+    private func levelRow(index: Int) -> some View {
         Button(action: {
             applyLevel(Int32(index))
         }) {
@@ -129,21 +127,15 @@ struct ContentView: View {
 
     // MARK: - Helpers
 
-    private var levelDisplayName: String {
-        guard currentLevel >= 0 && currentLevel < CADebugCommon.perfHUDLevelNames.count else {
-            return loc.string(.levelOff)
-        }
-        return levelName(for: Int(currentLevel))
-    }
-
     private func applyLevel(_ level: Int32) {
-        withAnimation(.default) {
+        let animation: Animation? = settings.animateChanges ? .easeInOut(duration: 0.2) : nil
+        withAnimation(animation) {
             CADebugCommon.setPerfHUDLevel(level)
             currentLevel = CADebugCommon.getPerfHUDLevel()
             settings.hudLevel = level
-            if settings.hapticFeedback {
-                UISelectionFeedbackGenerator().selectionChanged()
-            }
+        }
+        if settings.hapticFeedback {
+            UISelectionFeedbackGenerator().selectionChanged()
         }
     }
 

@@ -35,17 +35,32 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section {
+            // Live preview – every slider below updates this immediately.
+            VStack(spacing: 8) {
+                HudOverlayView(isPreview: true)
+                    .frame(maxWidth: .infinity)
+                Text(loc.string(.previewLabel))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+
+            Text(loc.string(.appearanceNote))
+                .font(.caption)
+                .foregroundColor(.secondary)
+
             sliderRow(
                 title: loc.string(.windowWidth),
                 value: $settings.windowWidth,
-                range: 100...400,
+                range: 120...320,
                 step: 10,
                 format: "%.0f pt"
             )
             sliderRow(
                 title: loc.string(.windowHeight),
                 value: $settings.windowHeight,
-                range: 40...300,
+                range: 50...200,
                 step: 10,
                 format: "%.0f pt"
             )
@@ -53,14 +68,14 @@ struct SettingsView: View {
             sliderRow(
                 title: loc.string(.positionX),
                 value: $settings.positionX,
-                range: -200...200,
+                range: -300...300,
                 step: 10,
                 format: "%.0f"
             )
             sliderRow(
                 title: loc.string(.positionY),
                 value: $settings.positionY,
-                range: -200...200,
+                range: -300...300,
                 step: 10,
                 format: "%.0f"
             )
@@ -68,7 +83,7 @@ struct SettingsView: View {
             sliderRow(
                 title: loc.string(.fontSize),
                 value: $settings.fontSize,
-                range: 8...32,
+                range: 8...28,
                 step: 1,
                 format: "%.0f pt"
             )
@@ -99,7 +114,7 @@ struct SettingsView: View {
                 sliderRow(
                     title: loc.string(.borderWidth),
                     value: $settings.borderWidth,
-                    range: 0...10,
+                    range: 0...6,
                     step: 1,
                     format: "%.0f pt"
                 )
@@ -107,19 +122,6 @@ struct SettingsView: View {
 
             colorPickerRow(title: loc.string(.textColor), hex: $settings.textColorHex)
             colorPickerRow(title: loc.string(.bgColor), hex: $settings.bgColorHex)
-
-            Button {
-                settings.applyAppearance()
-                if settings.hapticFeedback {
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                }
-            } label: {
-                Label(loc.string(.applySettings), systemImage: "checkmark.circle")
-            }
-
-            Text(loc.string(.experimentalNote))
-                .font(.caption)
-                .foregroundColor(.secondary)
         } header: {
             Text(loc.string(.appearance))
         }
@@ -142,18 +144,26 @@ struct SettingsView: View {
 
     private var advancedSection: some View {
         Section(loc.string(.advanced)) {
-            Toggle(isOn: $settings.persistAcrossLaunches) {
-                Text(loc.string(.persistAcrossLaunches))
-            }
-            Toggle(isOn: $settings.autoApplyOnLaunch) {
-                Text(loc.string(.autoApplyOnLaunch))
-            }
-            Toggle(isOn: $settings.hapticFeedback) {
-                Text(loc.string(.hapticFeedback))
-            }
-            Toggle(isOn: $settings.animateChanges) {
-                Text(loc.string(.animateChanges))
-            }
+            toggleRow(
+                title: loc.string(.persistAcrossLaunches),
+                subtitle: loc.string(.persistDesc),
+                isOn: $settings.persistAcrossLaunches
+            )
+            toggleRow(
+                title: loc.string(.autoApplyOnLaunch),
+                subtitle: loc.string(.autoApplyDesc),
+                isOn: $settings.autoApplyOnLaunch
+            )
+            toggleRow(
+                title: loc.string(.hapticFeedback),
+                subtitle: loc.string(.hapticDesc),
+                isOn: $settings.hapticFeedback
+            )
+            toggleRow(
+                title: loc.string(.animateChanges),
+                subtitle: loc.string(.animateDesc),
+                isOn: $settings.animateChanges
+            )
         }
     }
 
@@ -170,6 +180,17 @@ struct SettingsView: View {
     }
 
     // MARK: - Row Builders
+
+    private func toggleRow(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
 
     private func sliderRow(
         title: String,

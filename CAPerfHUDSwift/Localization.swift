@@ -61,7 +61,6 @@ enum L10n {
     // MARK: - Main view
     case selectHUDLevel
     case currentLevel
-    case quickToggle
     case turnOn
     case turnOff
     case applySettings
@@ -89,6 +88,17 @@ enum L10n {
     case animateChanges
     case resetToDefaults
     case experimentalNote
+
+    // MARK: - In-app overlay
+    case overlayFPS
+    case overlayMemory
+    case overlayHint
+    case previewLabel
+    case appearanceNote
+    case persistDesc
+    case autoApplyDesc
+    case hapticDesc
+    case animateDesc
 
     // MARK: - Language settings
     case selectLanguage
@@ -167,7 +177,6 @@ extension L10n {
         // Main view
         case .selectHUDLevel: return "Select HUD Level"
         case .currentLevel: return "Current Level"
-        case .quickToggle: return "Quick Toggle"
         case .turnOn: return "Turn On"
         case .turnOff: return "Turn Off"
         case .applySettings: return "Apply Appearance"
@@ -196,13 +205,24 @@ extension L10n {
         case .resetToDefaults: return "Reset to Defaults"
         case .experimentalNote: return "Note: Appearance settings depend on iOS version support. Some options may not affect the system HUD on all devices."
 
+        // In-app overlay
+        case .overlayFPS: return "FPS"
+        case .overlayMemory: return "MEM"
+        case .overlayHint: return "The floating card above is the in-app HUD. Drag it to move, and adjust its look under Settings → Appearance."
+        case .previewLabel: return "Live preview — changes apply instantly"
+        case .appearanceNote: return "These options control the in-app HUD. The iOS system HUD's look is drawn by the system and cannot be changed."
+        case .persistDesc: return "When off, changes are not saved and defaults return on the next launch."
+        case .autoApplyDesc: return "Restore your last HUD level automatically when the app opens."
+        case .hapticDesc: return "Light vibration when switching levels."
+        case .animateDesc: return "Animate level and appearance changes. Turn off for instant, animation-free switching."
+
         // Language
         case .selectLanguage: return "Select Language"
         case .followSystem: return "Follow System"
 
         // Advanced
-        case .persistAcrossLaunches: return "Persist Across Launches"
-        case .autoApplyOnLaunch: return "Auto-Apply on Launch"
+        case .persistAcrossLaunches: return "Save Settings Across Launches"
+        case .autoApplyOnLaunch: return "Restore Last Level on Launch"
         case .hapticFeedback: return "Haptic Feedback"
 
         // About
@@ -263,7 +283,6 @@ extension L10n {
         // Main view
         case .selectHUDLevel: return "选择 HUD 级别"
         case .currentLevel: return "当前级别"
-        case .quickToggle: return "快速开关"
         case .turnOn: return "开启"
         case .turnOff: return "关闭"
         case .applySettings: return "应用外观"
@@ -292,13 +311,24 @@ extension L10n {
         case .resetToDefaults: return "恢复默认设置"
         case .experimentalNote: return "注意：外观设置取决于 iOS 系统版本支持。部分选项可能不会影响所有设备上的系统 HUD。"
 
+        // In-app overlay
+        case .overlayFPS: return "帧率"
+        case .overlayMemory: return "内存"
+        case .overlayHint: return "顶部浮动的卡片是 App 内自绘 HUD，可拖动调整位置，外观在「设置 → 外观」中调整。"
+        case .previewLabel: return "实时预览 —— 调整立即生效"
+        case .appearanceNote: return "以下设置作用于本 App 内自绘的 HUD。iOS 系统 HUD 的外观由系统绘制，无法修改。"
+        case .persistDesc: return "关闭后不保存本次修改，下次启动恢复默认值。"
+        case .autoApplyDesc: return "打开 App 时自动恢复上次选择的 HUD 级别。"
+        case .hapticDesc: return "切换级别时触发轻微震动。"
+        case .animateDesc: return "控制级别切换与外观变化的过渡动画，关闭后立即生效、无动画。"
+
         // Language
         case .selectLanguage: return "选择语言"
         case .followSystem: return "跟随系统"
 
         // Advanced
-        case .persistAcrossLaunches: return "跨启动持久化"
-        case .autoApplyOnLaunch: return "启动时自动应用"
+        case .persistAcrossLaunches: return "跨启动保存设置"
+        case .autoApplyOnLaunch: return "启动时恢复上次级别"
         case .hapticFeedback: return "触觉反馈"
 
         // About
