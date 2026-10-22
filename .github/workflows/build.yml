@@ -9,9 +9,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-app:
-    name: Build CAPerfHUDSwift .tipa
+  build:
+    name: Build .tipa + .deb
     runs-on: macos-14
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -20,67 +21,50 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
-      - name: Install ldid
-        run: brew install ldid
-
-      - name: Make build script executable
-        run: chmod +x ipabuild.sh
+      - name: Install ldid & Theos
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
       - name: Build .tipa (Release)
-        run: ./ipabuild.sh
+        run: |
+          chmod +x ipabuild.sh
+          ./ipabuild.sh
 
-      - name: Verify .tipa was produced
+      - name: Verify .tipa
         run: |
           ls -la build/CAPerfHUDSwift.tipa
           test -f build/CAPerfHUDSwift.tipa
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: CAPerfHUDSwift-tipa
-          path: build/CAPerfHUDSwift.tipa
-          if-no-files-found: error
-
-  build-tweak:
-    name: Build CAPerfHUDOverlay .deb
-    runs-on: macos-14
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Theos
-        run: |
-          git clone --recursive https://github.com/theos/theos.git $HOME/theos
-          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-
-      - name: Install iOS SDK
-        run: |
-          # Theos provides its own SDK setup; ensure ldid is present.
-          brew install ldid
 
       - name: Build tweak .deb
         run: |
           cd tweak
           make package FINALPACKAGE=1 THEOS=$HOME/theos
 
-      - name: Find .deb
-        id: find-deb
+      - name: Locate .deb
+        id: deb
         run: |
           DEB_PATH=$(find tweak/packages -name "*.deb" | head -n 1)
           echo "deb_path=$DEB_PATH" >> $GITHUB_OUTPUT
           ls -la "$DEB_PATH"
 
-      - name: Upload tweak artifact
+      - name: Upload .tipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAPerfHUDSwift-tipa
+          path: build/CAPerfHUDSwift.tipa
+          if-no-files-found: error
+
+      - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
           name: CAPerfHUDOverlay-deb
-          path: ${{ steps.find-deb.outputs.deb_path }}
+          path: ${{ steps.deb.outputs.deb_path }}
           if-no-files-found: error
 
   release:
     name: Publish GitHub Release
-    needs: [build-app, build-tweak]
+    needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
 
