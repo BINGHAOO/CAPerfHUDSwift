@@ -86,7 +86,6 @@ enum L10n {
     case bgColor
     case showBorder
     case borderWidth
-    case animateChanges
     case resetToDefaults
     case experimentalNote
 
@@ -95,6 +94,8 @@ enum L10n {
     case followSystem
 
     // MARK: - Advanced
+    case useCustomOverlay
+    case useCustomOverlayNote
     case persistAcrossLaunches
     case autoApplyOnLaunch
     case hapticFeedback
@@ -192,7 +193,6 @@ extension L10n {
         case .bgColor: return "Background Color"
         case .showBorder: return "Show Border"
         case .borderWidth: return "Border Width"
-        case .animateChanges: return "Animate Changes"
         case .resetToDefaults: return "Reset to Defaults"
         case .experimentalNote: return "Note: Appearance settings depend on iOS version support. Some options may not affect the system HUD on all devices."
 
@@ -201,6 +201,8 @@ extension L10n {
         case .followSystem: return "Follow System"
 
         // Advanced
+        case .useCustomOverlay: return "Custom Overlay (Jailbreak)"
+        case .useCustomOverlayNote: return "Requires the CAPerfHUDOverlay tweak. Draws a cross-app HUD with full appearance control."
         case .persistAcrossLaunches: return "Persist Across Launches"
         case .autoApplyOnLaunch: return "Auto-Apply on Launch"
         case .hapticFeedback: return "Haptic Feedback"
@@ -288,7 +290,6 @@ extension L10n {
         case .bgColor: return "背景颜色"
         case .showBorder: return "显示边框"
         case .borderWidth: return "边框宽度"
-        case .animateChanges: return "动画过渡"
         case .resetToDefaults: return "恢复默认设置"
         case .experimentalNote: return "注意：外观设置取决于 iOS 系统版本支持。部分选项可能不会影响所有设备上的系统 HUD。"
 
@@ -297,6 +298,8 @@ extension L10n {
         case .followSystem: return "跟随系统"
 
         // Advanced
+        case .useCustomOverlay: return "自定义悬浮窗（越狱）"
+        case .useCustomOverlayNote: return "需安装 CAPerfHUDOverlay 插件。绘制可完全控制外观的跨应用悬浮窗。"
         case .persistAcrossLaunches: return "跨启动持久化"
         case .autoApplyOnLaunch: return "启动时自动应用"
         case .hapticFeedback: return "触觉反馈"

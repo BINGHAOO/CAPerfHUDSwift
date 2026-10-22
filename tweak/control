@@ -1,0 +1,9 @@
+Package: com.binghaoo.caperfhud.overlay
+Name: CAPerfHUDOverlay
+Version: 1.3.0
+Architecture: iphoneos-arm64e
+Description: Cross-app performance HUD overlay for CAPerfHUDSwift. Requires the CAPerfHUDSwift app to configure.
+Maintainer: BINGHAOO
+Author: BINGHAOO
+Section: Tweaks
+Depends: mobilesubstrate
