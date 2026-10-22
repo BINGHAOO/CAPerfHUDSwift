@@ -14,6 +14,7 @@ A Swift alternative to [CAPerfHUD](https://github.com/khanhduytran0/CAPerfHUD). 
 - **Bilingual UI** — English and Simplified Chinese, switchable from within the app.
 - **Advanced Options** — Persist settings across launches, auto-apply on launch, haptic feedback.
 - **Drag to Move** — The custom overlay can be dragged anywhere on screen.
+- **Environment Detection** — Automatically detects jailbreak, TrollStore, and iOS version. Shows which features are available on your device and disables unsupported options with clear explanations.
 
 ## Requirements
 
@@ -59,6 +60,21 @@ A Swift alternative to [CAPerfHUD](https://github.com/khanhduytran0/CAPerfHUD). 
 4. Drag the overlay to reposition it. Settings persist automatically.
 
 > **Font size note:** The built-in iOS system HUD has a hardcoded font size that cannot be changed via public or private APIs. If you need larger text, use the Custom Overlay tweak, which lets you set any font size.
+
+## Environment Detection
+
+The app automatically detects your runtime environment and shows what works on your device:
+
+| Feature | TrollStore | Jailbreak | Stock / Sideloaded |
+|---------|:----------:|:---------:|:------------------:|
+| System HUD level switching | ✅ | ✅ | ❌ |
+| Custom cross-app overlay | ❌ | ✅ (with tweak) | ❌ |
+| Appearance settings (overlay) | ❌ | ✅ | ❌ |
+
+- The **HUD** tab shows an "Environment" section with the detected status (iOS version, jailbreak, TrollStore) and whether each feature is available.
+- If the system HUD is unavailable, the level selector is replaced with an explanation.
+- If the custom overlay is unavailable (not jailbroken or tweak not installed), its toggle is disabled with a reason.
+- The **About** tab lists the full environment report.
 
 ## Building
 

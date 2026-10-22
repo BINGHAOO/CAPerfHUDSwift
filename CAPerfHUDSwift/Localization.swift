@@ -100,6 +100,25 @@ enum L10n {
     case autoApplyOnLaunch
     case hapticFeedback
 
+    // MARK: - Environment detection
+    case environment
+    case environmentSummary
+    case jailbreakStatus
+    case trollStoreStatus
+    case systemHUDAvailable
+    case systemHUDUnavailable
+    case systemHUDUnavailableNote
+    case customOverlayAvailable
+    case customOverlayUnavailable
+    case customOverlayUnavailableNote
+    case tweakNotInstalled
+    case notJailbrokenNote
+    case featureUnsupported
+    case supported
+    case notSupported
+    case detected
+    case notDetected
+
     // MARK: - About
     case appName
     case appVersion
@@ -207,6 +226,25 @@ extension L10n {
         case .autoApplyOnLaunch: return "Auto-Apply on Launch"
         case .hapticFeedback: return "Haptic Feedback"
 
+        // Environment
+        case .environment: return "Environment"
+        case .environmentSummary: return "Environment"
+        case .jailbreakStatus: return "Jailbreak"
+        case .trollStoreStatus: return "TrollStore"
+        case .systemHUDAvailable: return "System HUD"
+        case .systemHUDUnavailable: return "System HUD Not Available"
+        case .systemHUDUnavailableNote: return "The system HUD level control requires the com.apple.QuartzCore.debug entitlement, available only on TrollStore or jailbroken devices."
+        case .customOverlayAvailable: return "Custom Overlay"
+        case .customOverlayUnavailable: return "Custom Overlay Not Available"
+        case .customOverlayUnavailableNote: return "The cross-app custom overlay requires a jailbroken device with the CAPerfHUDOverlay tweak installed."
+        case .tweakNotInstalled: return "Tweak not installed. Install the .deb and respring."
+        case .notJailbrokenNote: return "This device is not jailbroken. The custom overlay cannot run."
+        case .featureUnsupported: return "Unsupported on this device"
+        case .supported: return "Available"
+        case .notSupported: return "Unavailable"
+        case .detected: return "Detected"
+        case .notDetected: return "Not detected"
+
         // About
         case .appName: return "CAPerfHUDSwift"
         case .appVersion: return "Version"
@@ -303,6 +341,25 @@ extension L10n {
         case .persistAcrossLaunches: return "跨启动持久化"
         case .autoApplyOnLaunch: return "启动时自动应用"
         case .hapticFeedback: return "触觉反馈"
+
+        // Environment
+        case .environment: return "运行环境"
+        case .environmentSummary: return "运行环境"
+        case .jailbreakStatus: return "越狱"
+        case .trollStoreStatus: return "TrollStore"
+        case .systemHUDAvailable: return "系统 HUD"
+        case .systemHUDUnavailable: return "系统 HUD 不可用"
+        case .systemHUDUnavailableNote: return "系统 HUD 级别切换需要 com.apple.QuartzCore.debug 权限，仅在巨魔或越狱设备上可用。"
+        case .customOverlayAvailable: return "自定义悬浮窗"
+        case .customOverlayUnavailable: return "自定义悬浮窗不可用"
+        case .customOverlayUnavailableNote: return "跨应用自定义悬浮窗需要越狱设备并安装 CAPerfHUDOverlay 插件。"
+        case .tweakNotInstalled: return "插件未安装。请安装 .deb 并注销。"
+        case .notJailbrokenNote: return "当前设备未越狱，自定义悬浮窗无法运行。"
+        case .featureUnsupported: return "当前设备不支持此功能"
+        case .supported: return "可用"
+        case .notSupported: return "不可用"
+        case .detected: return "已检测"
+        case .notDetected: return "未检测"
 
         // About
         case .appName: return "CAPerfHUDSwift"

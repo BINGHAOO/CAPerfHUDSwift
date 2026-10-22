@@ -141,15 +141,19 @@ struct SettingsView: View {
     // MARK: - Advanced
 
     private var advancedSection: some View {
-        Section(loc.string(.advanced)) {
+        let env = EnvironmentDetector.shared.info
+        return Section(loc.string(.advanced)) {
             Toggle(isOn: $settings.useCustomOverlay) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(loc.string(.useCustomOverlay))
-                    Text(loc.string(.useCustomOverlayNote))
+                    Text(env.customOverlayAvailable ? loc.string(.useCustomOverlayNote) :
+                            (env.isJailbroken ? loc.string(.tweakNotInstalled) : loc.string(.notJailbrokenNote)))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
+            .disabled(!env.customOverlayAvailable)
+
             Toggle(isOn: $settings.persistAcrossLaunches) {
                 Text(loc.string(.persistAcrossLaunches))
             }

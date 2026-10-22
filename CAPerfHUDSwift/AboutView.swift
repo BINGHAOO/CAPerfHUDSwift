@@ -33,7 +33,8 @@ struct AboutView: View {
     }
 
     var body: some View {
-        NavigationView {
+        let env = EnvironmentDetector.shared.info
+        return NavigationView {
             List {
                 Section {
                     VStack(spacing: 12) {
@@ -63,6 +64,21 @@ struct AboutView: View {
                 Section {
                     infoRow(title: loc.string(.systemVersion), value: "iOS \(systemVersion)")
                     infoRow(title: loc.string(.deviceModel), value: deviceModel)
+                }
+
+                Section(loc.string(.environment)) {
+                    infoRow(title: loc.string(.jailbreakStatus),
+                            value: env.isJailbroken ? loc.string(.detected) : loc.string(.notDetected),
+                            valueColor: env.isJailbroken ? .green : .secondary)
+                    infoRow(title: loc.string(.trollStoreStatus),
+                            value: env.isTrollStore ? loc.string(.detected) : loc.string(.notDetected),
+                            valueColor: env.isTrollStore ? .green : .secondary)
+                    infoRow(title: loc.string(.systemHUDAvailable),
+                            value: env.systemHUDAvailable ? loc.string(.supported) : loc.string(.notSupported),
+                            valueColor: env.systemHUDAvailable ? .green : .red)
+                    infoRow(title: loc.string(.customOverlayAvailable),
+                            value: env.customOverlayAvailable ? loc.string(.supported) : loc.string(.notSupported),
+                            valueColor: env.customOverlayAvailable ? .green : .red)
                 }
 
                 Section(loc.string(.credits)) {
@@ -99,12 +115,12 @@ struct AboutView: View {
         return UIImage(named: iconFileName)
     }
 
-    private func infoRow(title: String, value: String) -> some View {
+    private func infoRow(title: String, value: String, valueColor: Color = .secondary) -> some View {
         HStack {
             Text(title)
             Spacer()
             Text(value)
-                .foregroundColor(.secondary)
+                .foregroundColor(valueColor)
                 .monospacedDigit()
         }
     }
