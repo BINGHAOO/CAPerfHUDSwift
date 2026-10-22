@@ -116,13 +116,17 @@ final class EnvironmentDetector {
         }
 
         // 4. fork() – returns -1 in a sandboxed app, a real PID when jailbroken.
-        let pid = fork()
-        if pid == 0 {
-            // Child process – exit immediately, we only used fork() as a probe.
-            _exit(0)
-        }
-        if pid > 0 {
-            return true
+        //    iOS SDK marks fork() as unavailable, so we resolve it dynamically.
+        if let forkSym = dlsym(dlopen("/usr/lib/libSystem.B.dylib", 2), "fork") {
+            let forkFn = unsafeBitCast(forkSym, to: (@convention(c) () -> pid_t).self)
+            let pid = forkFn()
+            if pid == 0 {
+                // Child process – exit immediately, we only used fork() as a probe.
+                _exit(0)
+            }
+            if pid > 0 {
+                return true
+            }
         }
 
         return false
