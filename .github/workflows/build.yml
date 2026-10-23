@@ -116,14 +116,51 @@ jobs:
         with:
           name: CAPerfHUD-Jailbreak-debs
 
+      - name: Rename files with version and write release notes
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG_NAME#v}"
+          mv CAPerfHUD-TrollStore.tipa "CAPerfHUD-TrollStore-v${VERSION}.tipa"
+          mv CAPerfHUD-rootful.deb "CAPerfHUD-rootful-v${VERSION}.deb"
+          mv CAPerfHUD-rootless.deb "CAPerfHUD-rootless-v${VERSION}.deb"
+          mv CAPerfHUD-roothide.deb "CAPerfHUD-roothide-v${VERSION}.deb"
+          cat > RELEASE_NOTES.md <<EOF
+          # CAPerfHUD v${VERSION}
+
+          ## 下载 / Downloads
+
+          | 文件 / File | 适用环境 / For |
+          |---|---|
+          | \`CAPerfHUD-TrollStore-v${VERSION}.tipa\` | TrollStore（巨魔），仅系统 HUD / TrollStore, system HUD only |
+          | \`CAPerfHUD-rootful-v${VERSION}.deb\` | rootful 越狱：unc0ver / checkra1n / palera1n rootful |
+          | \`CAPerfHUD-rootless-v${VERSION}.deb\` | rootless 越狱：Dopamine / palera1n rootless |
+          | \`CAPerfHUD-roothide-v${VERSION}.deb\` | roothide（隐藏越狱） |
+
+          ## 安装 / Install
+
+          - **TrollStore**：用 TrollStore 打开 \`.tipa\` 安装 / Open the \`.tipa\` with TrollStore
+          - **越狱 / Jailbreak**：通过 Sileo / Zebra / Cydia 安装 \`.deb\`，然后注销（Respring）/ Install the \`.deb\` via Sileo, Zebra or Cydia, then respring
+
+          ## 功能 / Features
+
+          - 系统 HUD 级别切换（10 级）/ System HUD level control (10 levels)
+          - 越狱版：跨应用自定义悬浮窗，可自定义宽度、高度、字号、透明度、位置、颜色、边框、圆角 / Jailbreak edition: cross-app custom overlay with fully customizable appearance
+          - 越狱版：HUD 页顶部分段切换「系统 HUD / 自定义悬浮窗」，互斥显示 / Jailbreak edition: segmented HUD mode switch on the HUD tab
+          - 中英双语界面 / English & Chinese UI
+
+          ---
+          EOF
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            CAPerfHUD-TrollStore.tipa
-            CAPerfHUD-rootful.deb
-            CAPerfHUD-rootless.deb
-            CAPerfHUD-roothide.deb
+            CAPerfHUD-TrollStore-v*.tipa
+            CAPerfHUD-rootful-v*.deb
+            CAPerfHUD-rootless-v*.deb
+            CAPerfHUD-roothide-v*.deb
+          body_path: RELEASE_NOTES.md
           generate_release_notes: true
           fail_on_unmatched_files: true
         env:
