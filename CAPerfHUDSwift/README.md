@@ -20,11 +20,12 @@ The Jailbreak Edition is built in **three variants**, one for each jailbreak typ
 |---|---|---|---|
 | `CAPerfHUD-rootful.deb` | unc0ver, palera1n rootful, checkra1n | `/Applications` + `/Library/MobileSubstrate/...` | `iphoneos-arm64e` |
 | `CAPerfHUD-rootless.deb` | Dopamine, palera1n rootless | `/var/jb/Applications` + `/var/jb/Library/...` (remapped automatically) | `iphoneos-arm64` |
-| `CAPerfHUD-roothide.deb` | roothide (hidden Dopamine fork) | jbroot (mapped by roothide) | `iphoneos-arm64` |
+| `CAPerfHUD-roothide.deb` | roothide (hidden Dopamine fork) | jbroot (mapped by roothide) | `iphoneos-arm64e` |
 
 ## Features
 
 - **System HUD Level Control** — Switch between the 10 built-in Core Animation perf HUD levels (Off, Basic, Backdrop, Particles, Full, Frequencies, Power, FPS only, Display, Glitches). Available in both editions.
+- **HUD Mode Switch** (jailbreak edition) — Pick between the system HUD and the custom cross-app overlay on the HUD tab; the two are mutually exclusive, so they never overlap. Switching to the custom overlay turns the system HUD off automatically (and restores your last level when switching back).
 - **Cross-App Custom Overlay (Jailbreak Edition)** — A SpringBoard tweak that draws a floating HUD over every app. Fully configurable: font size, position, size, colors, opacity, corner radius, border.
 - **Drag to Move** — The custom overlay can be dragged anywhere on screen.
 - **Bilingual UI** — English and Simplified Chinese, switchable from within the app.
@@ -112,11 +113,11 @@ The output is `build/CAPerfHUD-TrollStore.tipa`.
 cd tweak
 make package FINALPACKAGE=1                                    # rootful
 THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1      # rootless (Dopamine)
-THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1 \
+THEOS_PACKAGE_SCHEME=roothide make package FINALPACKAGE=1 \
     THEOS=$HOME/theos-roothide                                 # roothide (needs roothide/theos)
 ```
 
-The `.deb` outputs are in `tweak/packages/`. The rootless/roothide schemes automatically remap all paths to `/var/jb` (or the jbroot prefix); no source changes are needed since the app↔tweak plist lives in `/var/mobile/Library/Preferences/`, which is shared across all jailbreak types.
+The `.deb` outputs are in `tweak/packages/`. The rootless scheme remaps all paths to `/var/jb`; the roothide scheme packages with standard paths and forces package arch `iphoneos-arm64e`, so roothide's dpkg remaps them into the hidden jbroot and roothide Sileo installs them directly (no patcher needed). No source changes are needed since the app↔tweak plist lives in `/var/mobile/Library/Preferences/`, which is shared across all jailbreak types.
 
 ## GitHub Actions
 

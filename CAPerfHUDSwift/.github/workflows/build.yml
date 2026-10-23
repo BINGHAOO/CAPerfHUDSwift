@@ -64,7 +64,11 @@ jobs:
         run: |
           cd tweak
           make clean THEOS=$HOME/theos-roothide
-          THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1 THEOS=$HOME/theos-roothide
+          # roothide scheme (not rootless!): loads the roothide vendor module,
+          # forces package arch iphoneos-arm64e, skips libroot and packages
+          # with standard paths so roothide's dpkg remaps them into jbroot.
+          # Packages built this way install directly in roothide Sileo.
+          THEOS_PACKAGE_SCHEME=roothide make package FINALPACKAGE=1 THEOS=$HOME/theos-roothide
           mv packages/*.deb ../build/CAPerfHUD-roothide.deb
 
       - name: Verify packages
