@@ -72,18 +72,28 @@ Yes — the jailbreak edition uses a different bundle identifier (`com.binghaoo.
 
 ### Custom Overlay (Jailbreak Edition)
 
-1. Install the jailbreak edition `.deb` (see above) and respring.
-2. Open the app → **Settings** → **Advanced** → enable **Custom Overlay (Jailbreak)**.
-3. Adjust appearance in **Settings** → **Appearance**:
+1. Install the jailbreak edition `.deb` (see above) and respring. The overlay starts enabled with default styling.
+2. Open the app → **HUD** tab → switch the top segmented control to **Custom Overlay** (or back to **System HUD**; the two are mutually exclusive).
+3. Adjust the quick sliders right below the switch:
    - Width / Height — overlay window size.
-   - Horizontal (X) / Vertical (Y) — position offset from the top-center.
-   - Font Size — **the system HUD font cannot be changed**, but the custom overlay respects this value. Default is 12 pt; increase it if the text is too small.
-   - Background Opacity / Corner Radius — background styling.
-   - Text Color / Background Color — pick any color.
-   - Show Border — add a border and set its width.
-4. Drag the overlay to reposition it. Settings persist automatically.
+   - Font Size — only the custom overlay respects this; the system HUD's font is hardcoded by iOS.
+   - Background Opacity.
+4. Full styling (position, colors, border, corner radius) lives in **Settings** → **Appearance**.
+5. Drag the overlay to reposition it. Settings persist automatically.
 
-> The app and the tweak communicate through a shared plist at `/var/mobile/Library/Preferences/com.binghaoo.caperfhud.plist`. The app writes your settings there and posts a Darwin notification; the tweak reads them and redraws the overlay.
+> The app and the tweak communicate through a shared plist plus a Darwin notification (`com.binghaoo.caperfhud/settingsChanged`). The app writes to the standard prefs directory, the jbroot prefs directory (roothide) and its own app-container defaults; the tweak reads the newest of all of them.
+
+### Troubleshooting the Custom Overlay
+
+If the overlay does not show up or ignores your settings:
+
+1. Open the app → **About** → **Diagnostics**.
+2. Tap **Send settings + notify tweak**, wait a second, then tap **Copy report** and paste the content into a bug report.
+3. The report shows:
+   - whether the app could write each candidate location (primary / jbroot / defaults suite);
+   - the tweak's own view: which file it actually loaded (`usedPath`), whether it found prefs, and the applied values.
+
+Respring once after installing a new build so the tweak re-reads everything from scratch.
 
 > **Font size note:** The built-in iOS system HUD has a hardcoded font size that cannot be changed via public or private APIs. If you need larger text, use the Custom Overlay tweak, which lets you set any font size.
 

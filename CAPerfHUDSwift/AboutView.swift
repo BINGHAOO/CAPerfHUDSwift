@@ -134,6 +134,7 @@ struct DiagnosticsView: View {
     @EnvironmentObject var loc: LocalizationManager
     @State private var lines: [String] = []
     @State private var notifySent = false
+    @State private var copied = false
 
     var body: some View {
         List {
@@ -145,6 +146,13 @@ struct DiagnosticsView: View {
                 } label: {
                     Label(notifySent ? loc.string(.diagnosticsSent) : loc.string(.diagnosticsSend),
                           systemImage: "paperplane")
+                }
+                Button {
+                    UIPasteboard.general.string = lines.joined(separator: "\n")
+                    copied = true
+                } label: {
+                    Label(copied ? loc.string(.diagnosticsCopied) : loc.string(.diagnosticsCopy),
+                          systemImage: copied ? "checkmark" : "doc.on.doc")
                 }
             }
             Section {
@@ -166,10 +174,12 @@ struct DiagnosticsView: View {
 
         out.append("== App ==")
         out.append("bundlePath: \(Bundle.main.bundlePath)")
+        out.append("HOME: \(NSHomeDirectory())")
         out.append("jbroot: \(HudSettings.jbrootPath() ?? "not derived (not roothide?)")")
 
         let primary = "/var/mobile/Library/Preferences/\(domain).plist"
         let jbroot = HudSettings.jbrootPath().map { "\($0)/var/mobile/Library/Preferences/\(domain).plist" }
+        let suitePath = HudSettings.suitePrefsPath()
 
         out.append("")
         out.append("== Write test ==")
@@ -203,22 +213,46 @@ struct DiagnosticsView: View {
                 out.append("jbroot: FAIL (\(error.localizedDescription))")
             }
         }
+        // Defaults suite round-trip – the guaranteed channel even when the
+        // app is sandboxed.
+        let suite = UserDefaults(suiteName: domain)
+        suite?.set("diag-\(Int(Date().timeIntervalSince1970))", forKey: "diagMarker")
+        suite?.synchronize()
+        let suiteReadBack = suite?.string(forKey: "diagMarker")
+        out.append("suite (UserDefaults): \(suiteReadBack != nil ? "OK" : "FAIL")")
 
         out.append("")
-        out.append("== Read back ==")
-        for (label, path) in [("primary", primary), ("jbroot", jbroot ?? "")] where !path.isEmpty {
-            if let dict = NSDictionary(contentsOfFile: path) {
-                out.append("\(label): exists, enabled=\(dict["enabled"] ?? "?"), w=\(dict["windowWidth"] ?? "?"), h=\(dict["windowHeight"] ?? "?")")
-            } else {
-                out.append("\(label): MISSING or unreadable")
-            }
+        out.append("== Files on disk ==")
+        out.append("primary: \(fm.fileExists(atPath: primary) ? "exists" : "missing")")
+        if let jbroot = jbroot {
+            out.append("jbroot: \(fm.fileExists(atPath: jbroot) ? "exists" : "missing")")
         }
+        out.append("suite file: \(fm.fileExists(atPath: suitePath) ? "exists" : "missing")")
+        out.append("  \(suitePath)")
 
         out.append("")
         out.append("== Tweak state (written by SpringBoard) ==")
-        let diagPath = "/var/mobile/Library/Preferences/\(domain).diag.plist"
-        if fm.fileExists(atPath: diagPath), let diag = NSDictionary(contentsOfFile: diagPath) {
-            for key in ["lastReload", "reloadCount", "notifyCount", "prefsFound", "enabled", "usedPath", "windowWidth", "windowHeight", "fontSize", "primaryExists", "jbrootExists", "jbrootPrefsPath"] {
+        // The tweak mirrors the diag file next to the prefs file it actually
+        // used, so probe every plausible location.
+        var diagCandidates: [(String, String)] = [("primary", "/var/mobile/Library/Preferences/\(domain).diag.plist")]
+        if let jbroot = jbroot {
+            diagCandidates.append(("jbroot", jbroot.replacingOccurrences(of: ".plist", with: ".diag.plist", options: [.backwards])))
+        }
+        diagCandidates.append(("container", NSHomeDirectory() + "/Library/Preferences/\(domain).diag.plist"))
+
+        var diag: NSDictionary? = nil
+        var diagSource = ""
+        for (label, path) in diagCandidates {
+            if let d = NSDictionary(contentsOfFile: path) {
+                diag = d
+                diagSource = label
+                break
+            }
+        }
+
+        if let diag = diag {
+            out.append("read from: \(diagSource)")
+            for key in ["lastReload", "reloadCount", "notifyCount", "prefsFound", "prefsKeyCount", "enabled", "usedPath", "candidateCount", "windowWidth", "windowHeight", "fontSize", "primaryExists", "jbrootExists", "jbrootPrefsPath"] {
                 if let v = diag[key] {
                     out.append("\(key): \(v)")
                 }
