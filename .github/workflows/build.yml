@@ -56,14 +56,14 @@ jobs:
       - name: Build rootless .deb (Dopamine / palera1n rootless)
         run: |
           cd tweak
-          make clean
+          make clean THEOS=$HOME/theos
           THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1 THEOS=$HOME/theos
           mv packages/*.deb ../build/CAPerfHUD-rootless.deb
 
       - name: Build roothide .deb (roothide bootstrap)
         run: |
           cd tweak
-          make clean
+          make clean THEOS=$HOME/theos-roothide
           THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1 THEOS=$HOME/theos-roothide
           mv packages/*.deb ../build/CAPerfHUD-roothide.deb
 

@@ -1,3 +1,7 @@
+# Default theos location when THEOS is not passed on the command line
+# (e.g. plain `make clean`).
+THEOS ?= $(HOME)/theos
+
 # rootful (unc0ver / palera1n rootful): arm64 + arm64e, package arch iphoneos-arm64e
 # rootless (Dopamine / palera1n rootless): arm64 only, paths remapped to /var/jb
 # roothide: built with roothide/theos under the rootless scheme
