@@ -13,7 +13,9 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             List {
+                #if JAILBREAK
                 appearanceSection
+                #endif
                 languageSection
                 advancedSection
                 resetSection
@@ -31,8 +33,9 @@ struct SettingsView: View {
         .navigationViewStyle(.stack)
     }
 
-    // MARK: - Appearance
+    // MARK: - Appearance (jailbreak edition only – configures the tweak overlay)
 
+    #if JAILBREAK
     private var appearanceSection: some View {
         Section {
             sliderRow(
@@ -124,6 +127,7 @@ struct SettingsView: View {
             Text(loc.string(.appearance))
         }
     }
+    #endif
 
     // MARK: - Language
 
@@ -141,25 +145,20 @@ struct SettingsView: View {
     // MARK: - Advanced
 
     private var advancedSection: some View {
-        let env = EnvironmentDetector.shared.info
-        return Section(loc.string(.advanced)) {
+        Section(loc.string(.advanced)) {
+            #if JAILBREAK
             Toggle(isOn: $settings.useCustomOverlay) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(loc.string(.useCustomOverlay))
-                    Text(env.customOverlayAvailable ? loc.string(.useCustomOverlayNote) :
-                            (env.isJailbroken ? loc.string(.tweakNotInstalled) : loc.string(.notJailbrokenNote)))
+                    Text(loc.string(.useCustomOverlayNote))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .disabled(!env.customOverlayAvailable)
-
-            Toggle(isOn: $settings.persistAcrossLaunches) {
-                Text(loc.string(.persistAcrossLaunches))
-            }
             Toggle(isOn: $settings.autoApplyOnLaunch) {
                 Text(loc.string(.autoApplyOnLaunch))
             }
+            #endif
             Toggle(isOn: $settings.hapticFeedback) {
                 Text(loc.string(.hapticFeedback))
             }
@@ -180,6 +179,7 @@ struct SettingsView: View {
 
     // MARK: - Row Builders
 
+    #if JAILBREAK
     private func sliderRow(
         title: String,
         value: Binding<Double>,
@@ -213,6 +213,7 @@ struct SettingsView: View {
             .labelsHidden()
         }
     }
+    #endif
 }
 
 #Preview {

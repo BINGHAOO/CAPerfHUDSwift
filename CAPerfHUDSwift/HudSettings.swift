@@ -70,9 +70,6 @@ final class HudSettings: ObservableObject {
     }
 
     // MARK: - Behavior
-    @Published var persistAcrossLaunches: Bool {
-        didSet { UserDefaults.standard.set(persistAcrossLaunches, forKey: "HUDPersist") }
-    }
     @Published var autoApplyOnLaunch: Bool {
         didSet { UserDefaults.standard.set(autoApplyOnLaunch, forKey: "HUDAutoApply") }
     }
@@ -81,7 +78,9 @@ final class HudSettings: ObservableObject {
     }
 
     // MARK: - Debounce
+    #if JAILBREAK
     private var syncWorkItem: DispatchWorkItem?
+    #endif
 
     // MARK: - Defaults
     private init() {
@@ -106,7 +105,6 @@ final class HudSettings: ObservableObject {
         self.showBorder = defaults.bool(forKey: "HUDShowBorder")
         self.borderWidth = defaults.object(forKey: "HUDBorderWidth") as? Double ?? 1
 
-        self.persistAcrossLaunches = defaults.object(forKey: "HUDPersist") as? Bool ?? true
         self.autoApplyOnLaunch = defaults.object(forKey: "HUDAutoApply") as? Bool ?? true
         self.hapticFeedback = defaults.object(forKey: "HUDHaptic") as? Bool ?? true
     }
@@ -126,7 +124,6 @@ final class HudSettings: ObservableObject {
         bgColorHex = "#000000"
         showBorder = false
         borderWidth = 1
-        persistAcrossLaunches = true
         autoApplyOnLaunch = true
         hapticFeedback = true
         syncToSharedPrefs()
@@ -152,18 +149,23 @@ final class HudSettings: ObservableObject {
     // MARK: - Shared prefs sync (for SpringBoard tweak)
 
     /// Debounced sync: batches rapid slider changes into one plist write.
+    /// Only compiled into the jailbreak edition (there is no tweak to talk to
+    /// in the TrollStore edition).
     private func scheduleSync() {
+        #if JAILBREAK
         syncWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self] in
             self?.syncToSharedPrefs()
         }
         syncWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
+        #endif
     }
 
     /// Writes all appearance settings to the shared plist and posts a Darwin
     /// notification so the SpringBoard tweak reloads them.
     func syncToSharedPrefs() {
+        #if JAILBREAK
         let dict: [String: Any] = [
             "enabled": useCustomOverlay,
             "windowWidth": windowWidth,
@@ -198,6 +200,7 @@ final class HudSettings: ObservableObject {
             CFNotificationName(kCAPerfHUDSettingsChangedNotification as CFString),
             nil, nil, true
         )
+        #endif
     }
 }
 

@@ -33,8 +33,7 @@ struct AboutView: View {
     }
 
     var body: some View {
-        let env = EnvironmentDetector.shared.info
-        return NavigationView {
+        NavigationView {
             List {
                 Section {
                     VStack(spacing: 12) {
@@ -57,6 +56,7 @@ struct AboutView: View {
                 }
 
                 Section {
+                    infoRow(title: loc.string(.buildFlavor), value: editionName)
                     infoRow(title: loc.string(.appVersion), value: appVersion)
                     infoRow(title: loc.string(.buildNumber), value: buildNumber)
                 }
@@ -64,21 +64,6 @@ struct AboutView: View {
                 Section {
                     infoRow(title: loc.string(.systemVersion), value: "iOS \(systemVersion)")
                     infoRow(title: loc.string(.deviceModel), value: deviceModel)
-                }
-
-                Section(loc.string(.environment)) {
-                    infoRow(title: loc.string(.jailbreakStatus),
-                            value: env.isJailbroken ? loc.string(.detected) : loc.string(.notDetected),
-                            valueColor: env.isJailbroken ? .green : .secondary)
-                    infoRow(title: loc.string(.trollStoreStatus),
-                            value: env.isTrollStore ? loc.string(.detected) : loc.string(.notDetected),
-                            valueColor: env.isTrollStore ? .green : .secondary)
-                    infoRow(title: loc.string(.systemHUDAvailable),
-                            value: env.systemHUDAvailable ? loc.string(.supported) : loc.string(.notSupported),
-                            valueColor: env.systemHUDAvailable ? .green : .red)
-                    infoRow(title: loc.string(.customOverlayAvailable),
-                            value: env.customOverlayAvailable ? loc.string(.supported) : loc.string(.notSupported),
-                            valueColor: env.customOverlayAvailable ? .green : .red)
                 }
 
                 Section(loc.string(.credits)) {
@@ -101,6 +86,14 @@ struct AboutView: View {
         .navigationViewStyle(.stack)
     }
 
+    private var editionName: String {
+        #if JAILBREAK
+        return loc.string(.editionJailbreak)
+        #else
+        return loc.string(.editionTrollStore)
+        #endif
+    }
+
     private var appIconImage: UIImage? {
         guard let icons = Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
               let primaryIcon = icons["CFBundlePrimaryIcon"] as? [String: Any],
@@ -115,12 +108,12 @@ struct AboutView: View {
         return UIImage(named: iconFileName)
     }
 
-    private func infoRow(title: String, value: String, valueColor: Color = .secondary) -> some View {
+    private func infoRow(title: String, value: String) -> some View {
         HStack {
             Text(title)
             Spacer()
             Text(value)
-                .foregroundColor(valueColor)
+                .foregroundColor(.secondary)
                 .monospacedDigit()
         }
     }

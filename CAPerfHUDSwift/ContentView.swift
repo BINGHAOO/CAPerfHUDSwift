@@ -50,32 +50,11 @@ struct ContentView: View {
     // MARK: - HUD Tab
 
     private var hudTab: some View {
-        let env = EnvironmentDetector.shared.info
-        return NavigationView {
+        NavigationView {
             List {
-                environmentSection(env: env)
-
-                if env.systemHUDAvailable {
-                    Section {
-                        quickToggleRow
-                    }
-
-                    Section(loc.string(.selectHUDLevel)) {
-                        ForEach(Array(CADebugCommon.perfHUDLevelNames.enumerated()), id: \.offset) { index, name in
-                            levelRow(index: index, name: name)
-                        }
-                    }
-                } else {
-                    Section {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label(loc.string(.systemHUDUnavailable), systemImage: "exclamationmark.triangle")
-                                .foregroundColor(.orange)
-                                .font(.headline)
-                            Text(loc.string(.systemHUDUnavailableNote))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.vertical, 4)
+                Section(loc.string(.selectHUDLevel)) {
+                    ForEach(Array(CADebugCommon.perfHUDLevelNames.enumerated()), id: \.offset) { index, name in
+                        levelRow(index: index, name: name)
                     }
                 }
 
@@ -91,79 +70,6 @@ struct ContentView: View {
             .navigationTitle(loc.string(.hud))
         }
         .navigationViewStyle(.stack)
-    }
-
-    // MARK: - Environment section
-
-    private func environmentSection(env: EnvironmentInfo) -> some View {
-        Section(loc.string(.environment)) {
-            HStack {
-                Label(loc.string(.environmentSummary), systemImage: "info.circle")
-                Spacer()
-                Text(env.summary)
-                    .foregroundColor(.secondary)
-                    .font(.subheadline)
-            }
-
-            statusRow(
-                title: loc.string(.systemHUDAvailable),
-                available: env.systemHUDAvailable,
-                note: env.systemHUDAvailable ? nil : loc.string(.systemHUDUnavailableNote)
-            )
-
-            statusRow(
-                title: loc.string(.customOverlayAvailable),
-                available: env.customOverlayAvailable,
-                note: env.customOverlayAvailable ? nil :
-                    (env.isJailbroken ? loc.string(.tweakNotInstalled) : loc.string(.notJailbrokenNote))
-            )
-        }
-    }
-
-    private func statusRow(title: String, available: Bool, note: String?) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Image(systemName: available ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .foregroundColor(available ? .green : .red)
-                Text(title)
-                Spacer()
-                Text(available ? loc.string(.supported) : loc.string(.notSupported))
-                    .foregroundColor(available ? .green : .red)
-                    .font(.subheadline)
-            }
-            if let note = note {
-                Text(note)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-    }
-
-    private var quickToggleRow: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(loc.string(.quickToggle))
-                    .font(.headline)
-                Text("\(loc.string(.currentLevel)): \(levelDisplayName)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-            Toggle(isOn: Binding(
-                get: { currentLevel > 0 },
-                set: { newValue in
-                    if newValue {
-                        let saved = settings.hudLevel > 0 ? settings.hudLevel : 1
-                        applyLevel(saved)
-                    } else {
-                        applyLevel(0)
-                    }
-                }
-            )) {
-                EmptyView()
-            }
-            .labelsHidden()
-        }
     }
 
     private func levelRow(index: Int, name: String) -> some View {
@@ -191,13 +97,6 @@ struct ContentView: View {
     }
 
     // MARK: - Helpers
-
-    private var levelDisplayName: String {
-        guard currentLevel >= 0 && currentLevel < CADebugCommon.perfHUDLevelNames.count else {
-            return loc.string(.levelOff)
-        }
-        return levelName(for: Int(currentLevel))
-    }
 
     private func applyLevel(_ level: Int32) {
         withAnimation(.default) {

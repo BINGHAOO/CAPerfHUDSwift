@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Build .tipa + .deb
+    name: Build TrollStore .tipa + Jailbreak .deb
     runs-on: macos-14
     timeout-minutes: 60
 
@@ -26,20 +26,34 @@ jobs:
           brew install ldid
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
-      - name: Build .tipa (Release)
+      - name: Build TrollStore edition (.tipa)
         run: |
           chmod +x ipabuild.sh
           ./ipabuild.sh
 
       - name: Verify .tipa
         run: |
-          ls -la build/CAPerfHUDSwift.tipa
-          test -f build/CAPerfHUDSwift.tipa
+          ls -la build/CAPerfHUD-TrollStore.tipa
+          test -f build/CAPerfHUD-TrollStore.tipa
 
-      - name: Build tweak .deb
+      - name: Build Jailbreak edition app (.app)
+        run: ./ipabuild.sh --jailbreak
+
+      - name: Verify jailbreak .app
+        run: |
+          ls -la build/CAPerfHUDSwift.app
+          test -d build/CAPerfHUDSwift.app
+
+      - name: Build tweak .deb (bundles the jailbreak app)
         run: |
           cd tweak
           make package FINALPACKAGE=1 THEOS=$HOME/theos
+
+      - name: Verify .deb contents
+        run: |
+          DEB_PATH=$(find tweak/packages -name "*.deb" | head -n 1)
+          echo "Deb: $DEB_PATH"
+          dpkg-deb -c "$DEB_PATH"
 
       - name: Locate .deb
         id: deb
@@ -48,17 +62,17 @@ jobs:
           echo "deb_path=$DEB_PATH" >> $GITHUB_OUTPUT
           ls -la "$DEB_PATH"
 
-      - name: Upload .tipa artifact
+      - name: Upload TrollStore .tipa artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CAPerfHUDSwift-tipa
-          path: build/CAPerfHUDSwift.tipa
+          name: CAPerfHUD-TrollStore-tipa
+          path: build/CAPerfHUD-TrollStore.tipa
           if-no-files-found: error
 
-      - name: Upload .deb artifact
+      - name: Upload Jailbreak .deb artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CAPerfHUDOverlay-deb
+          name: CAPerfHUD-Jailbreak-deb
           path: ${{ steps.deb.outputs.deb_path }}
           if-no-files-found: error
 
@@ -72,21 +86,21 @@ jobs:
       contents: write
 
     steps:
-      - name: Download .tipa artifact
+      - name: Download TrollStore .tipa artifact
         uses: actions/download-artifact@v4
         with:
-          name: CAPerfHUDSwift-tipa
+          name: CAPerfHUD-TrollStore-tipa
 
-      - name: Download .deb artifact
+      - name: Download Jailbreak .deb artifact
         uses: actions/download-artifact@v4
         with:
-          name: CAPerfHUDOverlay-deb
+          name: CAPerfHUD-Jailbreak-deb
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            CAPerfHUDSwift.tipa
+            CAPerfHUD-TrollStore.tipa
             *.deb
           generate_release_notes: true
           fail_on_unmatched_files: true

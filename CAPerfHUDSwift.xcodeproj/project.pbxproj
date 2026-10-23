@@ -19,7 +19,6 @@
 		D69491A32B31296C004FA859 /* HudSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69491A22B31296C004FA859 /* HudSettings.swift */; };
 		D69491A52B31296C004FA859 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69491A42B31296C004FA859 /* SettingsView.swift */; };
 		D69491A72B31296C004FA859 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69491A62B31296C004FA859 /* AboutView.swift */; };
-		D69491B12B31296C004FA859 /* EnvironmentDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69491B02B31296C004FA859 /* EnvironmentDetector.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,7 +55,6 @@
 		D69491A22B31296C004FA859 /* HudSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HudSettings.swift; sourceTree = "<group>"; };
 		D69491A42B31296C004FA859 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		D69491A62B31296C004FA859 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
-		D69491B02B31296C004FA859 /* EnvironmentDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentDetector.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -115,7 +113,6 @@
 				D69491A22B31296C004FA859 /* HudSettings.swift */,
 				D69491A42B31296C004FA859 /* SettingsView.swift */,
 				D69491A62B31296C004FA859 /* AboutView.swift */,
-				D69491B02B31296C004FA859 /* EnvironmentDetector.swift */,
 				D69491862B3125D7004FA859 /* CAPerfHudSwift.entitlements */,
 				D69491602B312588004FA859 /* Assets.xcassets */,
 				D69491622B312588004FA859 /* Preview Content */,
@@ -280,7 +277,6 @@
 				D69491A32B31296C004FA859 /* HudSettings.swift in Sources */,
 				D69491A52B31296C004FA859 /* SettingsView.swift in Sources */,
 				D69491A72B31296C004FA859 /* AboutView.swift in Sources */,
-				D69491B12B31296C004FA859 /* EnvironmentDetector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -458,7 +454,7 @@
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/swift",
 				);
-				MARKETING_VERSION = 1.4.0;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ca.bomberfish.CAPerfHudSwift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -496,7 +492,7 @@
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/swift",
 				);
-				MARKETING_VERSION = 1.4.0;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ca.bomberfish.CAPerfHudSwift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
