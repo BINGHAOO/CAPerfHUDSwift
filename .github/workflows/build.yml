@@ -49,12 +49,6 @@ jobs:
           cd tweak
           make package FINALPACKAGE=1 THEOS=$HOME/theos
 
-      - name: Verify .deb contents
-        run: |
-          DEB_PATH=$(find tweak/packages -name "*.deb" | head -n 1)
-          echo "Deb: $DEB_PATH"
-          dpkg-deb -c "$DEB_PATH"
-
       - name: Locate .deb
         id: deb
         run: |
