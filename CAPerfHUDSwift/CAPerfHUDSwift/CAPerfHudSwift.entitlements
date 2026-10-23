@@ -4,7 +4,13 @@
 <dict>
 	<key>com.apple.QuartzCore.debug</key>
 	<true/>
+	<key>platform-application</key>
+	<true/>
 	<key>com.apple.private.security.no-sandbox</key>
+	<true/>
+	<key>com.apple.private.security.storage.AppBundles</key>
+	<true/>
+	<key>com.apple.private.security.storage.AppDataContainers</key>
 	<true/>
 </dict>
 </plist>
