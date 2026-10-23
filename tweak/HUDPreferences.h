@@ -28,8 +28,6 @@ extern NSString * const kCAPerfHUDSettingsChangedNotification;
 @property (nonatomic, readonly) BOOL enabled;
 @property (nonatomic, readonly) CGFloat windowWidth;
 @property (nonatomic, readonly) CGFloat windowHeight;
-@property (nonatomic, readonly) CGFloat positionX;
-@property (nonatomic, readonly) CGFloat positionY;
 @property (nonatomic, readonly) CGFloat fontSize;
 @property (nonatomic, readonly) CGFloat backgroundOpacity;
 @property (nonatomic, readonly) CGFloat cornerRadius;

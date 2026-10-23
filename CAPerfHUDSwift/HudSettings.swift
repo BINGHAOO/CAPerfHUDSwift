@@ -36,14 +36,6 @@ final class HudSettings: ObservableObject {
         didSet { UserDefaults.standard.set(windowHeight, forKey: "HUDWindowHeight"); scheduleSync() }
     }
 
-    // MARK: - Position
-    @Published var positionX: Double {
-        didSet { UserDefaults.standard.set(positionX, forKey: "HUDPositionX"); scheduleSync() }
-    }
-    @Published var positionY: Double {
-        didSet { UserDefaults.standard.set(positionY, forKey: "HUDPositionY"); scheduleSync() }
-    }
-
     // MARK: - Typography & Colors
     @Published var fontSize: Double {
         didSet { UserDefaults.standard.set(fontSize, forKey: "HUDFontSize"); scheduleSync() }
@@ -101,9 +93,6 @@ final class HudSettings: ObservableObject {
         self.windowWidth = defaults.object(forKey: "HUDWindowWidth") as? Double ?? 220
         self.windowHeight = defaults.object(forKey: "HUDWindowHeight") as? Double ?? 80
 
-        self.positionX = defaults.object(forKey: "HUDPositionX") as? Double ?? 0
-        self.positionY = defaults.object(forKey: "HUDPositionY") as? Double ?? 0
-
         self.fontSize = defaults.object(forKey: "HUDFontSize") as? Double ?? 12
         self.backgroundOpacity = defaults.object(forKey: "HUDBackgroundOpacity") as? Double ?? 0.7
         self.cornerRadius = defaults.object(forKey: "HUDCornerRadius") as? Double ?? 12
@@ -127,8 +116,6 @@ final class HudSettings: ObservableObject {
         hudLevel = 0
         windowWidth = 220
         windowHeight = 80
-        positionX = 0
-        positionY = 0
         fontSize = 12
         backgroundOpacity = 0.7
         cornerRadius = 12
@@ -180,8 +167,6 @@ final class HudSettings: ObservableObject {
             "enabled": useCustomOverlay,
             "windowWidth": windowWidth,
             "windowHeight": windowHeight,
-            "positionX": positionX,
-            "positionY": positionY,
             "fontSize": fontSize,
             "backgroundOpacity": backgroundOpacity,
             "cornerRadius": cornerRadius,

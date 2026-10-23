@@ -193,9 +193,7 @@ struct DiagnosticsView: View {
             "textColorHex": HudSettings.shared.textColorHex,
             "bgColorHex": HudSettings.shared.bgColorHex,
             "showBorder": HudSettings.shared.showBorder,
-            "borderWidth": HudSettings.shared.borderWidth,
-            "positionX": HudSettings.shared.positionX,
-            "positionY": HudSettings.shared.positionY
+            "borderWidth": HudSettings.shared.borderWidth
         ]
         let data = try? PropertyListSerialization.data(fromPropertyList: testDict, format: .xml, options: 0)
 

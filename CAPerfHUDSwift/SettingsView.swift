@@ -54,21 +54,6 @@ struct SettingsView: View {
             )
 
             sliderRow(
-                title: loc.string(.positionX),
-                value: $settings.positionX,
-                range: -200...200,
-                step: 10,
-                format: "%.0f"
-            )
-            sliderRow(
-                title: loc.string(.positionY),
-                value: $settings.positionY,
-                range: -200...200,
-                step: 10,
-                format: "%.0f"
-            )
-
-            sliderRow(
                 title: loc.string(.fontSize),
                 value: $settings.fontSize,
                 range: 8...32,

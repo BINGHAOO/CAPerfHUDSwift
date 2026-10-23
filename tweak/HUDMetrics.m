@@ -7,6 +7,7 @@
 
 @interface HUDMetrics ()
 @property (nonatomic, strong) CADisplayLink *displayLink;
+@property (nonatomic, strong) NSTimer *systemTimer;
 @property (nonatomic) NSTimeInterval lastTimestamp;
 @property (nonatomic) NSInteger frameCount;
 @property (nonatomic) double fps;
@@ -18,6 +19,7 @@
 @property (nonatomic) integer_t lastCPUUser;
 @property (nonatomic) integer_t lastCPUSystem;
 @property (nonatomic) integer_t lastCPUIdle;
+@property (nonatomic) integer_t lastCPUNice;
 @end
 
 @implementation HUDMetrics
@@ -47,15 +49,24 @@
     if (self.displayLink) return;
 
     self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];
+    // Without an explicit rate request, iOS caps vsync delivery at 60 Hz on
+    // ProMotion devices, which made the FPS readout stick around 60 on 120 Hz
+    // screens. Ask for the panel maximum (120 on ProMotion) – the measured
+    // cadence then follows the real display pipeline: ~120 while content is
+    // animating, downshifting with the panel (LTPO) when it is not.
+    self.displayLink.preferredFramesPerSecond = [UIScreen mainScreen].maximumFramesPerSecond;
     [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 
     // Sample CPU/memory every second on a separate timer.
-    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(sampleSystemMetrics) userInfo:nil repeats:YES];
+    self.systemTimer = [NSTimer timerWithTimeInterval:1.0 target:self selector:@selector(sampleSystemMetrics) userInfo:nil repeats:YES];
+    [[NSRunLoop mainRunLoop] addTimer:self.systemTimer forMode:NSRunLoopCommonModes];
 }
 
 - (void)stop {
     [self.displayLink invalidate];
     self.displayLink = nil;
+    [self.systemTimer invalidate];
+    self.systemTimer = nil;
 }
 
 - (void)tick:(CADisplayLink *)link {
@@ -74,26 +85,41 @@
 }
 
 - (void)sampleSystemMetrics {
-    // Memory
-    task_vm_info_data_t vmInfo;
-    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
-    kern_return_t kr = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&vmInfo, &count);
-    if (kr == KERN_SUCCESS) {
-        self.memoryMB = (double)vmInfo.phys_footprint / (1024.0 * 1024.0);
+    // Memory – global used RAM of the whole device, not this process:
+    // wired + active + compressor pages (the standard "used" approximation).
+    mach_msg_type_number_t vmCount = HOST_VM_INFO64_COUNT;
+    vm_statistics64_data_t vmStat;
+    if (host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info64_t)&vmStat, &vmCount) == KERN_SUCCESS) {
+        vm_size_t pageSize = 0;
+        if (host_page_size(mach_host_self(), &pageSize) != KERN_SUCCESS || pageSize == 0) {
+            pageSize = 16384;
+        }
+
+        int64_t totalBytes = 0;
+        size_t sz = sizeof(totalBytes);
+        sysctlbyname("hw.memsize", &totalBytes, &sz, NULL, 0);
+        if (totalBytes <= 0) {
+            totalBytes = (int64_t)(vmStat.free_count + vmStat.active_count + vmStat.inactive_count +
+                                   vmStat.wire_count + vmStat.purgeable_count + vmStat.compressor_page_count) * (int64_t)pageSize;
+        }
+
+        int64_t usedBytes = (int64_t)(vmStat.wire_count + vmStat.active_count + vmStat.compressor_page_count) * (int64_t)pageSize;
+        if (usedBytes > totalBytes) usedBytes = totalBytes;
+        if (usedBytes < 0) usedBytes = 0;
+        self.memoryMB = (double)usedBytes / (1024.0 * 1024.0);
     }
 
-    // CPU
+    // CPU – global usage across all cores.
     mach_msg_type_number_t cpuCount = HOST_CPU_LOAD_INFO_COUNT;
     host_cpu_load_info_data_t cpuInfo;
-    kr = host_statistics64(mach_host_self(), HOST_CPU_LOAD_INFO, (host_info64_t)&cpuInfo, &cpuCount);
-    if (kr == KERN_SUCCESS) {
+    if (host_statistics64(mach_host_self(), HOST_CPU_LOAD_INFO, (host_info64_t)&cpuInfo, &cpuCount) == KERN_SUCCESS) {
         integer_t user = cpuInfo.cpu_ticks[CPU_STATE_USER];
         integer_t system = cpuInfo.cpu_ticks[CPU_STATE_SYSTEM];
         integer_t idle = cpuInfo.cpu_ticks[CPU_STATE_IDLE];
         integer_t nice = cpuInfo.cpu_ticks[CPU_STATE_NICE];
 
         if (self.lastCPUTime != 0) {
-            integer_t totalDiff = (user + system + idle + nice) - (self.lastCPUUser + self.lastCPUSystem + self.lastCPUIdle);
+            integer_t totalDiff = (user + system + idle + nice) - (self.lastCPUUser + self.lastCPUSystem + self.lastCPUIdle + self.lastCPUNice);
             integer_t usedDiff = (user + system) - (self.lastCPUUser + self.lastCPUSystem);
             if (totalDiff > 0) {
                 self.cpuPercent = (double)usedDiff / (double)totalDiff * 100.0;
@@ -103,6 +129,7 @@
         self.lastCPUUser = user;
         self.lastCPUSystem = system;
         self.lastCPUIdle = idle;
+        self.lastCPUNice = nice;
         self.lastCPUTime = [NSDate timeIntervalSinceReferenceDate];
     }
 }
