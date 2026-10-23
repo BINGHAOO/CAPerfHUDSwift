@@ -1,5 +1,6 @@
 // HUDMetrics.m
 #import "HUDMetrics.h"
+#import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
 #import <mach/mach.h>
 #import <mach/mach_host.h>
