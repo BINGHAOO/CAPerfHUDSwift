@@ -8,11 +8,19 @@
 
 | | 巨魔版（TrollStore） | 越狱版（Jailbreak） |
 |---|---|---|
-| 安装包 | `CAPerfHUD-TrollStore.tipa` | `com.binghaoo.caperfhud_*.deb` |
+| 安装包 | `CAPerfHUD-TrollStore.tipa` | `CAPerfHUD-{rootful,rootless,roothide}.deb` |
 | 安装方式 | TrollStore | Sileo / Zebra / Cydia / `dpkg -i` |
 | 系统 HUD 级别切换 | ✅ | ✅ |
 | 跨应用自定义悬浮窗 | ❌ | ✅（内置 SpringBoard 插件） |
 | 悬浮窗外观设置 | ❌ | ✅ |
+
+越狱版针对三种越狱类型分别构建：
+
+| 变体 | 适用越狱 | 安装位置 | 包架构 |
+|---|---|---|---|
+| `CAPerfHUD-rootful.deb` | unc0ver、palera1n rootful、checkra1n | `/Applications` + `/Library/MobileSubstrate/...` | `iphoneos-arm64e` |
+| `CAPerfHUD-rootless.deb` | Dopamine、palera1n rootless | `/var/jb/Applications` + `/var/jb/Library/...`（自动重映射） | `iphoneos-arm64` |
+| `CAPerfHUD-roothide.deb` | roothide（隐藏越狱的 Dopamine 分支） | jbroot（由 roothide 映射） | `iphoneos-arm64` |
 
 ## 功能
 
@@ -39,14 +47,16 @@
 
 ### 越狱版（`.deb`）
 
-1. 从 [Releases](https://github.com/BINGHAOO/CAPerfHUDSwift/releases) 页面下载最新的 `com.binghaoo.caperfhud_*.deb`。
+1. 从 [Releases](https://github.com/BINGHAOO/CAPerfHUDSwift/releases) 页面下载与你的越狱类型匹配的 `CAPerfHUD-{rootful|rootless|roothide}.deb`。
 2. 通过包管理器（Sileo、Zebra、Cydia）安装，或使用 `dpkg -i`。
 3. 注销（Respring）。
 
 `.deb` 包含 **两部分**：
 
-- `/Applications/CAPerfHUDSwift.app` — 控制应用（系统 HUD 级别 + 悬浮窗外观设置）。
-- `/Library/MobileSubstrate/DynamicLibraries/CAPerfHUDOverlay.dylib` — SpringBoard 插件。
+- 控制应用（系统 HUD 级别 + 悬浮窗外观设置）— 安装到 `/Applications`（rootful）、`/var/jb/Applications`（rootless）或 jbroot 的 Applications 目录（roothide）。
+- `/Library/MobileSubstrate/DynamicLibraries/CAPerfHUDOverlay.dylib`（或对应的 `/var/jb` / jbroot 路径）— SpringBoard 插件。
+
+> 不确定用哪个变体？**Dopamine** 和 **palera1n (rootless)** → `rootless`。**roothide** → `roothide`。**unc0ver / checkra1n / palera1n rootful** → `rootful`。
 
 ### 两个版本能同时安装吗？
 
@@ -100,18 +110,21 @@
 
 # 2. 构建插件 .deb（自动把 .app 打包进 /Applications）
 cd tweak
-make package FINALPACKAGE=1
+make package FINALPACKAGE=1                                    # rootful
+THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1      # rootless (Dopamine)
+THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1 \
+    THEOS=$HOME/theos-roothide                                 # roothide（需 roothide/theos）
 ```
 
-输出文件在 `tweak/packages/` 目录中。
+输出文件在 `tweak/packages/` 目录中。rootless/roothide 方案会自动把所有路径重映射到 `/var/jb`（或 jbroot 前缀），无需修改源码 — 应用与插件通信的 plist 位于 `/var/mobile/Library/Preferences/`，在所有越狱类型下位置相同。
 
 ## GitHub Actions
 
-推送 `v*` 标签会触发工作流，自动构建 **两个版本** 并发布到 GitHub Release：
+推送 `v*` 标签会触发工作流，自动构建 **两个版本**（以及三种越狱类型的 `.deb`）并发布到 GitHub Release：
 
 ```bash
-git tag v1.5.0
-git push origin v1.5.0
+git tag v1.6.0
+git push origin v1.6.0
 ```
 
 ## 架构

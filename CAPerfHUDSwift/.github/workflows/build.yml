@@ -26,6 +26,9 @@ jobs:
           brew install ldid
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
+      - name: Install roothide Theos
+        run: git clone --recursive https://github.com/roothide/theos.git $HOME/theos-roothide
+
       - name: Build TrollStore edition (.tipa)
         run: |
           chmod +x ipabuild.sh
@@ -44,17 +47,33 @@ jobs:
           ls -la build/CAPerfHUDSwift.app
           test -d build/CAPerfHUDSwift.app
 
-      - name: Build tweak .deb (bundles the jailbreak app)
+      - name: Build rootful .deb (unc0ver / palera1n rootful)
         run: |
           cd tweak
           make package FINALPACKAGE=1 THEOS=$HOME/theos
+          mv packages/*.deb ../build/CAPerfHUD-rootful.deb
 
-      - name: Locate .deb
-        id: deb
+      - name: Build rootless .deb (Dopamine / palera1n rootless)
         run: |
-          DEB_PATH=$(find tweak/packages -name "*.deb" | head -n 1)
-          echo "deb_path=$DEB_PATH" >> $GITHUB_OUTPUT
-          ls -la "$DEB_PATH"
+          cd tweak
+          make clean THEOS=$HOME/theos
+          THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1 THEOS=$HOME/theos
+          mv packages/*.deb ../build/CAPerfHUD-rootless.deb
+
+      - name: Build roothide .deb (roothide bootstrap)
+        run: |
+          cd tweak
+          make clean THEOS=$HOME/theos-roothide
+          THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1 THEOS=$HOME/theos-roothide
+          mv packages/*.deb ../build/CAPerfHUD-roothide.deb
+
+      - name: Verify packages
+        run: |
+          ls -la build/CAPerfHUD-rootful.deb build/CAPerfHUD-rootless.deb build/CAPerfHUD-roothide.deb
+          for f in build/CAPerfHUD-*.deb; do
+            echo "== $f =="
+            ar t "$f"
+          done
 
       - name: Upload TrollStore .tipa artifact
         uses: actions/upload-artifact@v4
@@ -63,11 +82,14 @@ jobs:
           path: build/CAPerfHUD-TrollStore.tipa
           if-no-files-found: error
 
-      - name: Upload Jailbreak .deb artifact
+      - name: Upload Jailbreak .deb artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CAPerfHUD-Jailbreak-deb
-          path: ${{ steps.deb.outputs.deb_path }}
+          name: CAPerfHUD-Jailbreak-debs
+          path: |
+            build/CAPerfHUD-rootful.deb
+            build/CAPerfHUD-rootless.deb
+            build/CAPerfHUD-roothide.deb
           if-no-files-found: error
 
   release:
@@ -85,17 +107,19 @@ jobs:
         with:
           name: CAPerfHUD-TrollStore-tipa
 
-      - name: Download Jailbreak .deb artifact
+      - name: Download Jailbreak .deb artifacts
         uses: actions/download-artifact@v4
         with:
-          name: CAPerfHUD-Jailbreak-deb
+          name: CAPerfHUD-Jailbreak-debs
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             CAPerfHUD-TrollStore.tipa
-            *.deb
+            CAPerfHUD-rootful.deb
+            CAPerfHUD-rootless.deb
+            CAPerfHUD-roothide.deb
           generate_release_notes: true
           fail_on_unmatched_files: true
         env:
