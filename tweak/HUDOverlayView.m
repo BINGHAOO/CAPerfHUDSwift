@@ -11,6 +11,7 @@
     UIPanGestureRecognizer *_pan;
     CGPoint _dragOffset;
     BOOL _hasSetInitialPosition;
+    NSTimer *_refreshTimer;
 }
 
 - (instancetype)init {
@@ -27,29 +28,13 @@
         _pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
         [self addGestureRecognizer:_pan];
 
-        // Observe settings changes from the app.
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
-                                        (__bridge const void *)self,
-                                        settingsChangedCallback,
-                                        (__bridge CFStringRef)kCAPerfHUDSettingsChangedNotification,
-                                        NULL,
-                                        CFNotificationSuspensionBehaviorDeliverImmediately);
-
-        [[HUDMetrics sharedMetrics] start];
+        // Start hidden; visibility and metric collection follow the
+        // "enabled" preference (applied by HUDOverlayWindow).
+        self.hidden = YES;
 
         [self applyPreferences];
-
-        // Refresh the text ~10 times per second.
-        [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(refreshText) userInfo:nil repeats:YES];
     }
     return self;
-}
-
-- (void)dealloc {
-    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(),
-                                       (__bridge const void *)self,
-                                       (__bridge CFStringRef)kCAPerfHUDSettingsChangedNotification,
-                                       NULL);
 }
 
 #pragma mark - Layout
@@ -86,6 +71,20 @@
     // Show or hide based on the "enabled" flag written by the app.
     self.hidden = !prefs.enabled;
 
+    // Start/stop metric collection together with the overlay so SpringBoard
+    // does not burn CPU while the overlay is not in use.
+    if (prefs.enabled) {
+        if (_refreshTimer == nil) {
+            _refreshTimer = [NSTimer timerWithTimeInterval:0.1 target:self selector:@selector(refreshText) userInfo:nil repeats:YES];
+            [[NSRunLoop mainRunLoop] addTimer:_refreshTimer forMode:NSRunLoopCommonModes];
+        }
+        [[HUDMetrics sharedMetrics] start];
+    } else {
+        [_refreshTimer invalidate];
+        _refreshTimer = nil;
+        [[HUDMetrics sharedMetrics] stop];
+    }
+
     // Resize
     CGRect frame = self.frame;
     frame.size.width = prefs.windowWidth;
@@ -111,14 +110,6 @@
     // Text
     _label.font = [UIFont monospacedDigitSystemFontOfSize:prefs.fontSize weight:UIFontWeightMedium];
     _label.textColor = [self colorFromHex:prefs.textColorHex];
-}
-
-static void settingsChangedCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    HUDOverlayView *view = (__bridge HUDOverlayView *)observer;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [[HUDPreferences sharedPreferences] reload];
-        [view applyPreferences];
-    });
 }
 
 #pragma mark - Dragging

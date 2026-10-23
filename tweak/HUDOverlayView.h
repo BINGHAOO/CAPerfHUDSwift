@@ -3,4 +3,5 @@
 
 @interface HUDOverlayView : UIView
 - (void)updateLayout;
+- (void)applyPreferences;
 @end
