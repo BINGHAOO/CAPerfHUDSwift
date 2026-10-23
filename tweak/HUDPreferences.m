@@ -7,6 +7,8 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
 
 @implementation HUDPreferences {
     NSDictionary *_prefs;
+    NSInteger _reloadCount;
+    NSString *_usedPath;
 }
 
 + (instancetype)sharedPreferences {
@@ -69,6 +71,33 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     }
 
     _prefs = dict ?: @{};
+    _usedPath = dict ? (dict == jbDict ? jbPath : primary) : nil;
+    _reloadCount++;
+}
+
+// Diagnostics for the app's "Diagnostics" page. SpringBoard can write to
+// /var/mobile/Library/Preferences freely, so the app can read this back.
+- (void)writeDiagnosticsNotifyCount:(NSInteger)notifyCount {
+    NSMutableDictionary *diag = [NSMutableDictionary dictionary];
+    diag[@"lastReload"] = [NSDate date];
+    diag[@"reloadCount"] = @(_reloadCount);
+    diag[@"notifyCount"] = @(notifyCount);
+    diag[@"usedPath"] = _usedPath ?: @"";
+    diag[@"prefsFound"] = @(_prefs.count > 0);
+    diag[@"enabled"] = @(self.enabled);
+    diag[@"windowWidth"] = @(self.windowWidth);
+    diag[@"windowHeight"] = @(self.windowHeight);
+    diag[@"fontSize"] = @(self.fontSize);
+    diag[@"primaryPath"] = [self primaryPrefsPath];
+
+    NSFileManager *fm = [NSFileManager defaultManager];
+    diag[@"primaryExists"] = @([fm fileExistsAtPath:[self primaryPrefsPath]]);
+    NSString *jb = [self jbrootPrefsPath];
+    diag[@"jbrootPrefsPath"] = jb ?: @"";
+    diag[@"jbrootExists"] = jb ? @([fm fileExistsAtPath:jb]) : @NO;
+
+    NSString *diagPath = [NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.diag.plist", kCAPerfHUDPrefsDomain];
+    [diag writeToFile:diagPath atomically:YES];
 }
 
 - (id)objectForKey:(NSString *)key {

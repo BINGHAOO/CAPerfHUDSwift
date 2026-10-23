@@ -6,6 +6,7 @@
 static void overlaySettingsChangedCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     HUDOverlayWindow *window = (__bridge HUDOverlayWindow *)observer;
     dispatch_async(dispatch_get_main_queue(), ^{
+        window.notifyCount++;
         [window refreshFromPreferences];
     });
 }
@@ -13,6 +14,8 @@ static void overlaySettingsChangedCallback(CFNotificationCenterRef center, void 
 @implementation HUDOverlayWindow {
     HUDOverlayView *_overlayView;
 }
+
+@synthesize notifyCount = _notifyCount;
 
 - (instancetype)init {
     self = [super initWithFrame:[UIScreen mainScreen].bounds];
@@ -49,16 +52,23 @@ static void overlaySettingsChangedCallback(CFNotificationCenterRef center, void 
 
 - (void)refreshFromPreferences {
     BOOL enabled = [HUDPreferences sharedPreferences].enabled;
+    BOOL shouldHide = !enabled;
 
-    // Hiding the whole window while disabled guarantees it cannot intercept
-    // any touches (hidden windows never participate in hit testing).
-    self.hidden = !enabled;
-    _overlayView.hidden = !enabled;
+    // Only flip the window visibility when the state actually changed –
+    // repeated hidden toggles make SpringBoard re-composite its windows
+    // (visible as a wallpaper flicker).
+    if (self.hidden != shouldHide) {
+        self.hidden = shouldHide;
+        _overlayView.hidden = shouldHide;
+    }
 
     if (enabled) {
         [_overlayView updateLayout];
         [_overlayView applyPreferences];
     }
+
+    // Let the app see what the tweak actually loaded (see Diagnostics page).
+    [[HUDPreferences sharedPreferences] writeDiagnosticsNotifyCount:self.notifyCount];
 }
 
 // Only let touches land on the overlay panel itself; everything else falls

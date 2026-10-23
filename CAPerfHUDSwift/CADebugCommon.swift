@@ -14,17 +14,11 @@ let RLTD_LAZY: Int32 = 0x1
 let RLTD_NOW: Int32 = 0x2
 
 // Debug value indices for the perf HUD.
-// Index 1 is the well-known level selector. The remaining indices are
-// appearance-related slots; the render server honours a subset of them
-// depending on the iOS version. Unknown values are safely ignored.
+// Only index 1 (the level selector) is documented and honoured by iOS.
+// The render server has no setters for font size, position, size, opacity or
+// corner radius – these are hardcoded by QuartzCore. Writing unknown debug
+// value slots only disturbs the render server (visible as wallpaper flicker).
 let HUD_VALUE_INDEX_LEVEL: Int32 = 1
-let HUD_VALUE_INDEX_FONT_SIZE: Int32 = 2
-let HUD_VALUE_INDEX_POSITION_X: Int32 = 3
-let HUD_VALUE_INDEX_POSITION_Y: Int32 = 4
-let HUD_VALUE_INDEX_WIDTH: Int32 = 5
-let HUD_VALUE_INDEX_HEIGHT: Int32 = 6
-let HUD_VALUE_INDEX_BG_OPACITY: Int32 = 7
-let HUD_VALUE_INDEX_CORNER_RADIUS: Int32 = 8
 
 // thanks https://bryce.co/on-device-render-debugging/ for a full swift implementation
 typealias getDebugOptType = @convention(c) (
@@ -66,34 +60,6 @@ public struct CADebugCommon {
             get: { getPerfHUDLevel() },
             set: { setPerfHUDLevel($0) }
         )
-    }
-
-    // MARK: - Appearance
-
-    /// Applies appearance-related values to the perf HUD.
-    /// Only honoured by iOS versions that expose these debug value slots.
-    /// Values are clamped to safe integer ranges expected by the render server.
-    static func applyHudAppearance(
-        fontSize: Double,
-        positionX: Double,
-        positionY: Double,
-        windowWidth: Double,
-        windowHeight: Double,
-        backgroundOpacity: Double,
-        cornerRadius: Double
-    ) {
-        CARenderServerSetDebugValue(0, HUD_VALUE_INDEX_FONT_SIZE, Int32(clamping: fontSize))
-        CARenderServerSetDebugValue(0, HUD_VALUE_INDEX_POSITION_X, Int32(clamping: positionX))
-        CARenderServerSetDebugValue(0, HUD_VALUE_INDEX_POSITION_Y, Int32(clamping: positionY))
-        CARenderServerSetDebugValue(0, HUD_VALUE_INDEX_WIDTH, Int32(clamping: windowWidth))
-        CARenderServerSetDebugValue(0, HUD_VALUE_INDEX_HEIGHT, Int32(clamping: windowHeight))
-        CARenderServerSetDebugValue(0, HUD_VALUE_INDEX_BG_OPACITY, Int32(clamping: backgroundOpacity * 100))
-        CARenderServerSetDebugValue(0, HUD_VALUE_INDEX_CORNER_RADIUS, Int32(clamping: cornerRadius))
-    }
-
-    /// Reads a debug value for the perf HUD. Returns the raw integer.
-    static func getHudValue(_ index: Int32) -> Int32 {
-        CARenderServerGetDebugValue(0, index)
     }
 }
 

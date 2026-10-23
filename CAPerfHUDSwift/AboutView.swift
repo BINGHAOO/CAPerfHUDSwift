@@ -66,8 +66,16 @@ struct AboutView: View {
                     infoRow(title: loc.string(.deviceModel), value: deviceModel)
                 }
 
+                #if JAILBREAK
+                Section {
+                    NavigationLink(destination: DiagnosticsView()) {
+                        Label(loc.string(.diagnostics), systemImage: "stethoscope")
+                    }
+                }
+                #endif
+
                 Section(loc.string(.credits)) {
-                    Link(destination: URL(string: "https://github.com/BomberFish/CAPerfHUDSwift")!) {
+                    Link(destination: URL(string: "https://github.com/BINGHAOO/CAPerfHUDSwift")!) {
                         Label(loc.string(.sourceCode), systemImage: "chevron.left.forwardslash.chevron.right")
                     }
                     Link(destination: URL(string: "https://github.com/khanhduytran0/CAPerfHUD")!) {
@@ -118,6 +126,111 @@ struct AboutView: View {
         }
     }
 }
+
+#if JAILBREAK
+/// Shows what the app and the SpringBoard tweak actually see on disk, so the
+/// app↔tweak settings pipeline can be verified on any jailbreak flavour.
+struct DiagnosticsView: View {
+    @EnvironmentObject var loc: LocalizationManager
+    @State private var lines: [String] = []
+    @State private var notifySent = false
+
+    var body: some View {
+        List {
+            Section {
+                Button {
+                    HudSettings.shared.syncToSharedPrefs()
+                    notifySent = true
+                    run()
+                } label: {
+                    Label(notifySent ? loc.string(.diagnosticsSent) : loc.string(.diagnosticsSend),
+                          systemImage: "paperplane")
+                }
+            }
+            Section {
+                ForEach(lines, id: \.self) { line in
+                    Text(line)
+                        .font(.system(.caption2, design: .monospaced))
+                        .textSelection(.enabled)
+                }
+            }
+        }
+        .navigationTitle(loc.string(.diagnostics))
+        .onAppear(perform: run)
+    }
+
+    private func run() {
+        var out: [String] = []
+        let fm = FileManager.default
+        let domain = kCAPerfHUDPrefsDomain as String
+
+        out.append("== App ==")
+        out.append("bundlePath: \(Bundle.main.bundlePath)")
+        out.append("jbroot: \(HudSettings.jbrootPath() ?? "not derived (not roothide?)")")
+
+        let primary = "/var/mobile/Library/Preferences/\(domain).plist"
+        let jbroot = HudSettings.jbrootPath().map { "\($0)/var/mobile/Library/Preferences/\(domain).plist" }
+
+        out.append("")
+        out.append("== Write test ==")
+        let testDict: [String: Any] = [
+            "enabled": HudSettings.shared.useCustomOverlay,
+            "windowWidth": HudSettings.shared.windowWidth,
+            "windowHeight": HudSettings.shared.windowHeight,
+            "fontSize": HudSettings.shared.fontSize,
+            "backgroundOpacity": HudSettings.shared.backgroundOpacity,
+            "cornerRadius": HudSettings.shared.cornerRadius,
+            "textColorHex": HudSettings.shared.textColorHex,
+            "bgColorHex": HudSettings.shared.bgColorHex,
+            "showBorder": HudSettings.shared.showBorder,
+            "borderWidth": HudSettings.shared.borderWidth,
+            "positionX": HudSettings.shared.positionX,
+            "positionY": HudSettings.shared.positionY
+        ]
+        let data = try? PropertyListSerialization.data(fromPropertyList: testDict, format: .xml, options: 0)
+
+        do {
+            try data?.write(to: URL(fileURLWithPath: primary))
+            out.append("primary: OK")
+        } catch {
+            out.append("primary: FAIL (\(error.localizedDescription))")
+        }
+        if let jbroot = jbroot {
+            do {
+                try data?.write(to: URL(fileURLWithPath: jbroot))
+                out.append("jbroot: OK")
+            } catch {
+                out.append("jbroot: FAIL (\(error.localizedDescription))")
+            }
+        }
+
+        out.append("")
+        out.append("== Read back ==")
+        for (label, path) in [("primary", primary), ("jbroot", jbroot ?? "")] where !path.isEmpty {
+            if let dict = NSDictionary(contentsOfFile: path) {
+                out.append("\(label): exists, enabled=\(dict["enabled"] ?? "?"), w=\(dict["windowWidth"] ?? "?"), h=\(dict["windowHeight"] ?? "?")")
+            } else {
+                out.append("\(label): MISSING or unreadable")
+            }
+        }
+
+        out.append("")
+        out.append("== Tweak state (written by SpringBoard) ==")
+        let diagPath = "/var/mobile/Library/Preferences/\(domain).diag.plist"
+        if fm.fileExists(atPath: diagPath), let diag = NSDictionary(contentsOfFile: diagPath) {
+            for key in ["lastReload", "reloadCount", "notifyCount", "prefsFound", "enabled", "usedPath", "windowWidth", "windowHeight", "fontSize", "primaryExists", "jbrootExists", "jbrootPrefsPath"] {
+                if let v = diag[key] {
+                    out.append("\(key): \(v)")
+                }
+            }
+        } else {
+            out.append("diag file not found – tweak never reloaded (respring once, then re-open this page)")
+        }
+
+        lines = out
+    }
+}
+#endif
 
 #Preview {
     AboutView()
