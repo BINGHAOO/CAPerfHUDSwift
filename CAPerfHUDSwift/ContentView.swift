@@ -46,6 +46,9 @@ struct ContentView: View {
             currentLevel = CADebugCommon.getPerfHUDLevel()
             #if JAILBREAK
             hudMode = settings.useCustomOverlay ? .custom : .system
+            // Push the app's current state to the shared plist on launch so
+            // the tweak never runs with stale preferences.
+            settings.syncToSharedPrefs()
             #endif
             if settings.autoApplyOnLaunch {
                 settings.applyAppearance()

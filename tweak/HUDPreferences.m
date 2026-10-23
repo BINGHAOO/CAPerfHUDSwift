@@ -1,5 +1,6 @@
 // HUDPreferences.m
 #import "HUDPreferences.h"
+#import <dlfcn.h>
 
 NSString * const kCAPerfHUDPrefsDomain = @"com.binghaoo.caperfhud";
 NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhud/settingsChanged";
@@ -25,10 +26,48 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     return self;
 }
 
+// Standard location, shared with the app.
+- (NSString *)primaryPrefsPath {
+    return [NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kCAPerfHUDPrefsDomain];
+}
+
+// On roothide the app may only be able to write inside the hidden jbroot.
+// Derive the jbroot prefix from this tweak's own dylib path
+// ("/var/containers/Bundle/Application/.jbroot-XXXXXXXX/...").
+- (NSString *)jbrootPrefsPath {
+    Dl_info info;
+    if (!dladdr((void *)&kCAPerfHUDPrefsDomain, &info) || info.dli_fname == NULL) return nil;
+
+    NSString *selfPath = [NSString stringWithUTF8String:info.dli_fname];
+    NSRange marker = [selfPath rangeOfString:@"/.jbroot-"];
+    if (marker.location == NSNotFound) return nil;
+
+    NSString *after = [selfPath substringFromIndex:NSMaxRange(marker)];
+    NSRange slash = [after rangeOfString:@"/"];
+    if (slash.location == NSNotFound) return nil;
+
+    NSString *jbroot = [[selfPath substringToIndex:marker.location]
+                        stringByAppendingFormat:@"/%@", [after substringToIndex:slash.location]];
+    return [NSString stringWithFormat:@"%@/var/mobile/Library/Preferences/%@.plist", jbroot, kCAPerfHUDPrefsDomain];
+}
+
 - (void)reload {
-    // Read the shared plist directly from the preferences directory.
-    NSString *path = [NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kCAPerfHUDPrefsDomain];
-    NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:path];
+    NSString *primary = [self primaryPrefsPath];
+    NSString *jbPath = [self jbrootPrefsPath];
+
+    NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:primary];
+    NSDictionary *jbDict = jbPath ? [NSDictionary dictionaryWithContentsOfFile:jbPath] : nil;
+
+    // When both exist, prefer the most recently modified one.
+    if (jbDict) {
+        NSFileManager *fm = [NSFileManager defaultManager];
+        NSDate *d1 = [fm attributesOfItemAtPath:primary error:nil][NSFileModificationDate];
+        NSDate *d2 = [fm attributesOfItemAtPath:jbPath error:nil][NSFileModificationDate];
+        if (!d1 || (d2 && [d2 compare:d1] == NSOrderedDescending)) {
+            dict = jbDict;
+        }
+    }
+
     _prefs = dict ?: @{};
 }
 
