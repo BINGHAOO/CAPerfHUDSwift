@@ -46,13 +46,14 @@
     CGFloat w = prefs.windowWidth;
     CGFloat h = prefs.windowHeight;
 
-    // Default to top-right, then apply user offset.
+    // Default to top-center; the user can drag the panel anywhere.
+    // (Manual X/Y offsets were removed – dragging covers it.)
     UIScreen *screen = [UIScreen mainScreen];
     CGFloat screenW = screen.bounds.size.width;
     CGFloat screenH = screen.bounds.size.height;
 
-    CGFloat x = (screenW - w) / 2.0 + prefs.positionX;
-    CGFloat y = 60 + prefs.positionY;
+    CGFloat x = (screenW - w) / 2.0;
+    CGFloat y = 60;
 
     // Clamp to screen.
     x = MAX(0, MIN(x, screenW - w));

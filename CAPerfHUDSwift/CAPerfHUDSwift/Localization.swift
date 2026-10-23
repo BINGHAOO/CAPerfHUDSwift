@@ -72,9 +72,6 @@ enum L10n {
     case windowSize
     case windowWidth
     case windowHeight
-    case position
-    case positionX
-    case positionY
     case fontSize
     case backgroundOpacity
     case cornerRadius
@@ -191,9 +188,6 @@ extension L10n {
         case .windowSize: return "Window Size"
         case .windowWidth: return "Width"
         case .windowHeight: return "Height"
-        case .position: return "Position"
-        case .positionX: return "Horizontal (X)"
-        case .positionY: return "Vertical (Y)"
         case .fontSize: return "Font Size"
         case .backgroundOpacity: return "Background Opacity"
         case .cornerRadius: return "Corner Radius"
@@ -219,7 +213,7 @@ extension L10n {
         case .modeSystemHUD: return "System HUD"
         case .modeCustomOverlay: return "Custom Overlay"
         case .customOverlayHint: return "The custom overlay is now visible on screen. Drag it to reposition. The system HUD has been turned off."
-        case .appearanceQuickNote: return "More appearance options (position, colors, border, corner radius) are available in the Settings tab."
+        case .appearanceQuickNote: return "More appearance options (colors, border, corner radius) are available in the Settings tab."
 
         // Edition
         case .buildFlavor: return "Edition"
@@ -300,9 +294,6 @@ extension L10n {
         case .windowSize: return "窗口大小"
         case .windowWidth: return "宽度"
         case .windowHeight: return "高度"
-        case .position: return "位置"
-        case .positionX: return "水平 (X)"
-        case .positionY: return "垂直 (Y)"
         case .fontSize: return "字体大小"
         case .backgroundOpacity: return "背景透明度"
         case .cornerRadius: return "圆角"
@@ -328,7 +319,7 @@ extension L10n {
         case .modeSystemHUD: return "系统 HUD"
         case .modeCustomOverlay: return "自定义悬浮窗"
         case .customOverlayHint: return "自定义悬浮窗已在屏幕上显示，可拖动调整位置。系统 HUD 已关闭。"
-        case .appearanceQuickNote: return "更多外观设置（位置、颜色、边框、圆角）请前往「设置」页。"
+        case .appearanceQuickNote: return "更多外观设置（颜色、边框、圆角）请前往「设置」页。"
 
         // Edition
         case .buildFlavor: return "版本类型"

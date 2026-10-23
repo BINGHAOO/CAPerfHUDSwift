@@ -78,7 +78,7 @@ Yes — the jailbreak edition uses a different bundle identifier (`com.binghaoo.
    - Width / Height — overlay window size.
    - Font Size — only the custom overlay respects this; the system HUD's font is hardcoded by iOS.
    - Background Opacity.
-4. Full styling (position, colors, border, corner radius) lives in **Settings** → **Appearance**.
+4. Full styling (colors, border, corner radius) lives in **Settings** → **Appearance**. The overlay's position is not a setting – just drag the panel wherever you want.
 5. Drag the overlay to reposition it. Settings persist automatically.
 
 > The app and the tweak communicate through a shared plist plus a Darwin notification (`com.binghaoo.caperfhud/settingsChanged`). The app writes to the standard prefs directory, the jbroot prefs directory (roothide) and its own app-container defaults; the tweak reads the newest of all of them.

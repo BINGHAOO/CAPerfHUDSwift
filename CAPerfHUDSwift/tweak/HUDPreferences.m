@@ -176,16 +176,6 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     return val ? [val doubleValue] : 80;
 }
 
-- (CGFloat)positionX {
-    id val = [self objectForKey:@"positionX"];
-    return val ? [val doubleValue] : 0;
-}
-
-- (CGFloat)positionY {
-    id val = [self objectForKey:@"positionY"];
-    return val ? [val doubleValue] : 0;
-}
-
 - (CGFloat)fontSize {
     id val = [self objectForKey:@"fontSize"];
     return val ? [val doubleValue] : 14;
