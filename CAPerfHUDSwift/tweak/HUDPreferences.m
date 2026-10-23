@@ -53,30 +53,78 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     return [NSString stringWithFormat:@"%@/var/mobile/Library/Preferences/%@.plist", jbroot, kCAPerfHUDPrefsDomain];
 }
 
-- (void)reload {
-    NSString *primary = [self primaryPrefsPath];
-    NSString *jbPath = [self jbrootPrefsPath];
+// Every location the app could possibly have written its settings plist to:
+// the standard prefs directory, the jbroot prefs directory, and the prefs
+// file inside EVERY app data container (a containerized app can only persist
+// its own defaults, which cfprefsd stores inside its data container).
+- (NSArray<NSString *> *)candidatePrefsPaths {
+    NSMutableArray *paths = [NSMutableArray array];
+    NSFileManager *fm = [NSFileManager defaultManager];
 
-    NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:primary];
-    NSDictionary *jbDict = jbPath ? [NSDictionary dictionaryWithContentsOfFile:jbPath] : nil;
+    [paths addObject:[self primaryPrefsPath]];
+    NSString *jbPrefs = [self jbrootPrefsPath];
+    if (jbPrefs) [paths addObject:jbPrefs];
 
-    // When both exist, prefer the most recently modified one.
-    if (jbDict) {
-        NSFileManager *fm = [NSFileManager defaultManager];
-        NSDate *d1 = [fm attributesOfItemAtPath:primary error:nil][NSFileModificationDate];
-        NSDate *d2 = [fm attributesOfItemAtPath:jbPath error:nil][NSFileModificationDate];
-        if (!d1 || (d2 && [d2 compare:d1] == NSOrderedDescending)) {
-            dict = jbDict;
+    // jbroot prefix (without the /var/... suffix), for container scanning.
+    NSString *jbRoot = nil;
+    if (jbPrefs) {
+        NSString *suffix = [NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", kCAPerfHUDPrefsDomain];
+        if ([jbPrefs hasSuffix:suffix]) {
+            jbRoot = [jbPrefs substringToIndex:([jbPrefs length] - [suffix length])];
         }
     }
 
-    _prefs = dict ?: @{};
-    _usedPath = dict ? (dict == jbDict ? jbPath : primary) : nil;
+    for (NSString *mobileRoot in [NSArray arrayWithObjects:@"/var/mobile",
+                                                            jbRoot ? [jbRoot stringByAppendingPathComponent:@"var/mobile"] : nil, nil]) {
+        NSString *appsRoot = [mobileRoot stringByAppendingPathComponent:@"Containers/Data/Application"];
+        NSArray *uuids = [fm contentsOfDirectoryAtPath:appsRoot error:nil];
+        for (NSString *uuid in uuids) {
+            NSString *p = [appsRoot stringByAppendingPathComponent:uuid];
+            p = [p stringByAppendingPathComponent:@"Library/Preferences"];
+            p = [p stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.plist", kCAPerfHUDPrefsDomain]];
+            [paths addObject:p];
+        }
+    }
+
+    return paths;
+}
+
+- (void)reload {
+    NSFileManager *fm = [NSFileManager defaultManager];
+
+    // Stat every candidate, then parse newest-first until one yields a
+    // non-empty dictionary. Newest wins so concurrent channels (direct write
+    // + defaults suite) always converge on the freshest settings.
+    NSMutableArray<NSDictionary *> *candidates = [NSMutableArray array];
+    for (NSString *path in [self candidatePrefsPaths]) {
+        NSDictionary *attrs = [fm attributesOfItemAtPath:path error:nil];
+        if (!attrs) continue;
+        [candidates addObject:@{@"path": path,
+                                @"date": attrs[NSFileModificationDate] ?: [NSDate distantPast]}];
+    }
+    [candidates sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+        return [b[@"date"] compare:a[@"date"]];
+    }];
+
+    for (NSDictionary *candidate in candidates) {
+        NSDictionary *dict = [NSDictionary dictionaryWithContentsOfFile:candidate[@"path"]];
+        if (dict.count > 0) {
+            _prefs = dict;
+            _usedPath = candidate[@"path"];
+            _reloadCount++;
+            return;
+        }
+    }
+
+    _prefs = @{};
+    _usedPath = nil;
     _reloadCount++;
 }
 
 // Diagnostics for the app's "Diagnostics" page. SpringBoard can write to
-// /var/mobile/Library/Preferences freely, so the app can read this back.
+// /var/mobile/Library/Preferences freely; the diag file is additionally
+// written next to the prefs file that was actually used, so even a fully
+// containerized app can read it from its own data container.
 - (void)writeDiagnosticsNotifyCount:(NSInteger)notifyCount {
     NSMutableDictionary *diag = [NSMutableDictionary dictionary];
     diag[@"lastReload"] = [NSDate date];
@@ -84,6 +132,7 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     diag[@"notifyCount"] = @(notifyCount);
     diag[@"usedPath"] = _usedPath ?: @"";
     diag[@"prefsFound"] = @(_prefs.count > 0);
+    diag[@"prefsKeyCount"] = @(_prefs.count);
     diag[@"enabled"] = @(self.enabled);
     diag[@"windowWidth"] = @(self.windowWidth);
     diag[@"windowHeight"] = @(self.windowHeight);
@@ -95,9 +144,17 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     NSString *jb = [self jbrootPrefsPath];
     diag[@"jbrootPrefsPath"] = jb ?: @"";
     diag[@"jbrootExists"] = jb ? @([fm fileExistsAtPath:jb]) : @NO;
+    diag[@"candidateCount"] = @([self candidatePrefsPaths].count);
 
     NSString *diagPath = [NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.diag.plist", kCAPerfHUDPrefsDomain];
     [diag writeToFile:diagPath atomically:YES];
+
+    // Mirror the diag next to the prefs file actually in use (app container
+    // or jbroot), so the app can read it even when sandboxed.
+    if (_usedPath && ![diagPath isEqualToString:_usedPath]) {
+        NSString *dir = [_usedPath stringByDeletingLastPathComponent];
+        [diag writeToFile:[dir stringByAppendingPathComponent:[diagPath lastPathComponent]] atomically:YES];
+    }
 }
 
 - (id)objectForKey:(NSString *)key {

@@ -109,6 +109,8 @@ enum L10n {
     case diagnostics
     case diagnosticsSend
     case diagnosticsSent
+    case diagnosticsCopy
+    case diagnosticsCopied
 
     // MARK: - About
     case appName
@@ -226,6 +228,8 @@ extension L10n {
         case .diagnostics: return "Diagnostics"
         case .diagnosticsSend: return "Send settings + notify tweak"
         case .diagnosticsSent: return "Sent – check tweak state below"
+        case .diagnosticsCopy: return "Copy report"
+        case .diagnosticsCopied: return "Copied"
 
         // About
         case .appName: return "CAPerfHUDSwift"
@@ -333,6 +337,8 @@ extension L10n {
         case .diagnostics: return "诊断"
         case .diagnosticsSend: return "发送设置并通知插件"
         case .diagnosticsSent: return "已发送 – 查看下方插件状态"
+        case .diagnosticsCopy: return "复制报告"
+        case .diagnosticsCopied: return "已复制"
 
         // About
         case .appName: return "CAPerfHUDSwift"

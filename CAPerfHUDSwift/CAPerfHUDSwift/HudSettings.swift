@@ -86,7 +86,15 @@ final class HudSettings: ObservableObject {
     private init() {
         let defaults = UserDefaults.standard
 
-        self.useCustomOverlay = defaults.object(forKey: "HUDUseCustomOverlay") as? Bool ?? false
+        // Jailbreak edition: the custom overlay is the headline feature, so it
+        // starts enabled – the user sees right after respring that the tweak
+        // pipeline works, and can switch back to the system HUD in this app.
+        #if JAILBREAK
+        let overlayDefault = true
+        #else
+        let overlayDefault = false
+        #endif
+        self.useCustomOverlay = defaults.object(forKey: "HUDUseCustomOverlay") as? Bool ?? overlayDefault
 
         self.hudLevel = Int32(defaults.integer(forKey: "HUDLevel"))
 
@@ -111,7 +119,11 @@ final class HudSettings: ObservableObject {
 
     // MARK: - Reset
     func resetAll() {
+        #if JAILBREAK
+        useCustomOverlay = true
+        #else
         useCustomOverlay = false
+        #endif
         hudLevel = 0
         windowWidth = 220
         windowHeight = 80
@@ -160,8 +172,8 @@ final class HudSettings: ObservableObject {
         #endif
     }
 
-    /// Writes all appearance settings to the shared plist and posts a Darwin
-    /// notification so the SpringBoard tweak reloads them.
+    /// Writes all appearance settings to every location the SpringBoard tweak
+    /// may look at, and posts a Darwin notification so it reloads them.
     func syncToSharedPrefs() {
         #if JAILBREAK
         let dict: [String: Any] = [
@@ -179,22 +191,27 @@ final class HudSettings: ObservableObject {
             "borderWidth": borderWidth
         ]
 
+        // 1. Defaults suite. This is the guaranteed channel: even when the
+        //    app is containerized/sandboxed, cfprefsd can always persist the
+        //    app's own defaults plist (inside the app data container), which
+        //    the tweak discovers by scanning the containers.
+        let suite = UserDefaults(suiteName: kCAPerfHUDPrefsDomain)
+        for (key, value) in dict {
+            suite?.set(value, forKey: key)
+        }
+        suite?.synchronize()
+
+        // 2. Direct plist writes (work when the app is not sandboxed).
         guard let data = try? PropertyListSerialization.data(fromPropertyList: dict,
                                                              format: .xml,
                                                              options: 0) else {
             return
         }
 
-        // Primary location, shared with the SpringBoard tweak.
-        var paths = ["/var/mobile/Library/Preferences/\(kCAPerfHUDPrefsDomain).plist"]
-
-        // On roothide the direct write may still be sandboxed; also write
-        // inside the hidden jbroot. The tweak probes both locations.
-        if let jbroot = Self.jbrootPath() {
-            paths.append("\(jbroot)/var/mobile/Library/Preferences/\(kCAPerfHUDPrefsDomain).plist")
-        }
-
-        for path in paths {
+        // Never direct-write the suite's own file: cfprefsd owns it and would
+        // overwrite the change from its cache.
+        let suitePath = Self.suitePrefsPath()
+        for path in Self.directPrefsPaths() where path != suitePath {
             try? data.write(to: URL(fileURLWithPath: path))
         }
 
@@ -208,6 +225,21 @@ final class HudSettings: ObservableObject {
     }
 
     #if JAILBREAK
+    /// Where the defaults suite plist lives (inside the app data container on
+    /// iOS, or $HOME/Library/Preferences for unsandboxed processes).
+    static func suitePrefsPath() -> String {
+        return NSHomeDirectory() + "/Library/Preferences/\(kCAPerfHUDPrefsDomain).plist"
+    }
+
+    /// Direct plist locations shared with the SpringBoard tweak.
+    static func directPrefsPaths() -> [String] {
+        var paths = ["/var/mobile/Library/Preferences/\(kCAPerfHUDPrefsDomain).plist"]
+        if let jbroot = jbrootPath() {
+            paths.append("\(jbroot)/var/mobile/Library/Preferences/\(kCAPerfHUDPrefsDomain).plist")
+        }
+        return paths
+    }
+
     /// Derives the roothide jbroot prefix from the app bundle path
     /// ("/var/containers/Bundle/Application/.jbroot-XXXXXXXX/..."), if any.
     static func jbrootPath() -> String? {

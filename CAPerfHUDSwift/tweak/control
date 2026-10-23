@@ -1,6 +1,6 @@
 Package: com.binghaoo.caperfhud
 Name: CAPerfHUD (Jailbreak)
-Version: 1.7.4
+Version: 1.7.5
 Architecture: iphoneos-arm64e
 Description: CAPerfHUD jailbreak edition. Includes the SpringBoard cross-app performance overlay tweak and the control app (installed to /Applications) for system HUD levels and overlay appearance.
 Maintainer: BINGHAOO

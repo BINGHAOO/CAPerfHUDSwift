@@ -13,6 +13,10 @@ extern NSString * const kCAPerfHUDSettingsChangedNotification;
 // Reload from the shared plist on disk.
 - (void)reload;
 
+// Every location the app may have written its settings to (standard prefs
+// directory, jbroot prefs directory, and every app data container).
+- (NSArray<NSString *> *)candidatePrefsPaths;
+
 // Writes a diagnostics plist so the app can display the tweak's view of the
 // shared configuration (used for troubleshooting on roothide).
 - (void)writeDiagnosticsNotifyCount:(NSInteger)notifyCount;

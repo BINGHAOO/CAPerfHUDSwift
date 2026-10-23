@@ -51,6 +51,11 @@ static void overlaySettingsChangedCallback(CFNotificationCenterRef center, void 
 }
 
 - (void)refreshFromPreferences {
+    // Re-read the shared plist from disk – the singleton caches the plist
+    // contents, so without an explicit reload here the tweak would forever
+    // use the values from SpringBoard launch.
+    [[HUDPreferences sharedPreferences] reload];
+
     BOOL enabled = [HUDPreferences sharedPreferences].enabled;
     BOOL shouldHide = !enabled;
 
