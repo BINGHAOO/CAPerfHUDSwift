@@ -1,0 +1,102 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build TrollStore .tipa + Jailbreak .deb
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Install ldid & Theos
+        run: |
+          brew install ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+
+      - name: Build TrollStore edition (.tipa)
+        run: |
+          chmod +x ipabuild.sh
+          ./ipabuild.sh
+
+      - name: Verify .tipa
+        run: |
+          ls -la build/CAPerfHUD-TrollStore.tipa
+          test -f build/CAPerfHUD-TrollStore.tipa
+
+      - name: Build Jailbreak edition app (.app)
+        run: ./ipabuild.sh --jailbreak
+
+      - name: Verify jailbreak .app
+        run: |
+          ls -la build/CAPerfHUDSwift.app
+          test -d build/CAPerfHUDSwift.app
+
+      - name: Build tweak .deb (bundles the jailbreak app)
+        run: |
+          cd tweak
+          make package FINALPACKAGE=1 THEOS=$HOME/theos
+
+      - name: Locate .deb
+        id: deb
+        run: |
+          DEB_PATH=$(find tweak/packages -name "*.deb" | head -n 1)
+          echo "deb_path=$DEB_PATH" >> $GITHUB_OUTPUT
+          ls -la "$DEB_PATH"
+
+      - name: Upload TrollStore .tipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAPerfHUD-TrollStore-tipa
+          path: build/CAPerfHUD-TrollStore.tipa
+          if-no-files-found: error
+
+      - name: Upload Jailbreak .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CAPerfHUD-Jailbreak-deb
+          path: ${{ steps.deb.outputs.deb_path }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download TrollStore .tipa artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: CAPerfHUD-TrollStore-tipa
+
+      - name: Download Jailbreak .deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: CAPerfHUD-Jailbreak-deb
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            CAPerfHUD-TrollStore.tipa
+            *.deb
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
