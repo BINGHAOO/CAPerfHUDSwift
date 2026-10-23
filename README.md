@@ -8,11 +8,19 @@ A Swift alternative to [CAPerfHUD](https://github.com/khanhduytran0/CAPerfHUD). 
 
 | | TrollStore Edition | Jailbreak Edition |
 |---|---|---|
-| Package | `CAPerfHUD-TrollStore.tipa` | `com.binghaoo.caperfhud_*.deb` |
+| Package | `CAPerfHUD-TrollStore.tipa` | `CAPerfHUD-{rootful,rootless,roothide}.deb` |
 | Install via | TrollStore | Sileo / Zebra / Cydia / `dpkg -i` |
 | System HUD level control | ✅ | ✅ |
 | Cross-app custom overlay | ❌ | ✅ (SpringBoard tweak included) |
 | Overlay appearance settings | ❌ | ✅ |
+
+The Jailbreak Edition is built in **three variants**, one for each jailbreak type:
+
+| Variant | Jailbreak | Install location | Package arch |
+|---|---|---|---|
+| `CAPerfHUD-rootful.deb` | unc0ver, palera1n rootful, checkra1n | `/Applications` + `/Library/MobileSubstrate/...` | `iphoneos-arm64e` |
+| `CAPerfHUD-rootless.deb` | Dopamine, palera1n rootless | `/var/jb/Applications` + `/var/jb/Library/...` (remapped automatically) | `iphoneos-arm64` |
+| `CAPerfHUD-roothide.deb` | roothide (hidden Dopamine fork) | jbroot (mapped by roothide) | `iphoneos-arm64` |
 
 ## Features
 
@@ -39,14 +47,16 @@ The TrollStore edition only controls the **system HUD** — appearance settings 
 
 ### Jailbreak Edition (`.deb`)
 
-1. Download the latest `com.binghaoo.caperfhud_*.deb` from the [Releases](https://github.com/BINGHAOO/CAPerfHUDSwift/releases) page.
+1. Download the latest `CAPerfHUD-{rootful|rootless|roothide}.deb` from the [Releases](https://github.com/BINGHAOO/CAPerfHUDSwift/releases) page, matching your jailbreak type.
 2. Install it via your package manager (Sileo, Zebra, Cydia) or with `dpkg -i`.
 3. Respring.
 
 The `.deb` installs **both**:
 
-- `/Applications/CAPerfHUDSwift.app` — the control app (system HUD levels + overlay appearance settings).
-- `/Library/MobileSubstrate/DynamicLibraries/CAPerfHUDOverlay.dylib` — the SpringBoard tweak.
+- The control app (system HUD levels + overlay appearance settings) — installed to `/Applications` (rootful), `/var/jb/Applications` (rootless), or the jbroot Applications directory (roothide).
+- `/Library/MobileSubstrate/DynamicLibraries/CAPerfHUDOverlay.dylib` (or the `/var/jb` / jbroot equivalent) — the SpringBoard tweak.
+
+> Not sure which variant you need? **Dopamine** and **palera1n (rootless)** → `rootless`. **roothide** → `roothide`. **unc0ver / checkra1n / palera1n rootful** → `rootful`.
 
 ### Can I install both editions?
 
@@ -100,18 +110,21 @@ The output is `build/CAPerfHUD-TrollStore.tipa`.
 
 # 2. Build the tweak .deb (bundles the .app at /Applications)
 cd tweak
-make package FINALPACKAGE=1
+make package FINALPACKAGE=1                                    # rootful
+THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1      # rootless (Dopamine)
+THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1 \
+    THEOS=$HOME/theos-roothide                                 # roothide (needs roothide/theos)
 ```
 
-The `.deb` output is in `tweak/packages/`.
+The `.deb` outputs are in `tweak/packages/`. The rootless/roothide schemes automatically remap all paths to `/var/jb` (or the jbroot prefix); no source changes are needed since the app↔tweak plist lives in `/var/mobile/Library/Preferences/`, which is shared across all jailbreak types.
 
 ## GitHub Actions
 
-Pushing a `v*` tag triggers a workflow that builds **both editions** and publishes them to a GitHub Release:
+Pushing a `v*` tag triggers a workflow that builds **both editions** (and all three `.deb` variants) and publishes them to a GitHub Release:
 
 ```bash
-git tag v1.5.0
-git push origin v1.5.0
+git tag v1.6.0
+git push origin v1.6.0
 ```
 
 ## Architecture
