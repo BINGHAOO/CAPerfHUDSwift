@@ -106,6 +106,9 @@ enum L10n {
     case buildFlavor
     case editionTrollStore
     case editionJailbreak
+    case diagnostics
+    case diagnosticsSend
+    case diagnosticsSent
 
     // MARK: - About
     case appName
@@ -220,6 +223,9 @@ extension L10n {
         case .buildFlavor: return "Edition"
         case .editionTrollStore: return "TrollStore"
         case .editionJailbreak: return "Jailbreak"
+        case .diagnostics: return "Diagnostics"
+        case .diagnosticsSend: return "Send settings + notify tweak"
+        case .diagnosticsSent: return "Sent – check tweak state below"
 
         // About
         case .appName: return "CAPerfHUDSwift"
@@ -324,6 +330,9 @@ extension L10n {
         case .buildFlavor: return "版本类型"
         case .editionTrollStore: return "巨魔版（TrollStore）"
         case .editionJailbreak: return "越狱版（Jailbreak）"
+        case .diagnostics: return "诊断"
+        case .diagnosticsSend: return "发送设置并通知插件"
+        case .diagnosticsSent: return "已发送 – 查看下方插件状态"
 
         // About
         case .appName: return "CAPerfHUDSwift"

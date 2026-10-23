@@ -13,6 +13,13 @@ extern NSString * const kCAPerfHUDSettingsChangedNotification;
 // Reload from the shared plist on disk.
 - (void)reload;
 
+// Writes a diagnostics plist so the app can display the tweak's view of the
+// shared configuration (used for troubleshooting on roothide).
+- (void)writeDiagnosticsNotifyCount:(NSInteger)notifyCount;
+
+// Path the last successful reload used, or nil when no plist was found.
+@property (nonatomic, copy, readonly) NSString *usedPath;
+
 // Appearance
 @property (nonatomic, readonly) BOOL enabled;
 @property (nonatomic, readonly) CGFloat windowWidth;

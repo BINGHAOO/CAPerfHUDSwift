@@ -129,21 +129,19 @@ final class HudSettings: ObservableObject {
         syncToSharedPrefs()
     }
 
-    // MARK: - Apply to system HUD
-    /// Pushes the current appearance settings to the Core Animation render server.
-    /// The system HUD only honours the level selector; appearance slots are ignored
-    /// on most iOS versions. Use the custom overlay tweak for full appearance control.
+    // MARK: - Apply on launch
+    /// Re-applies the stored settings on app launch.
+    /// NOTE: the system HUD only honours the level selector – QuartzCore has
+    /// no setters for size/position/opacity, and writing unknown debug value
+    /// slots disturbs the render server (visible as wallpaper flicker).
     func applyAppearance() {
-        CADebugCommon.applyHudAppearance(
-            fontSize: fontSize,
-            positionX: positionX,
-            positionY: positionY,
-            windowWidth: windowWidth,
-            windowHeight: windowHeight,
-            backgroundOpacity: backgroundOpacity,
-            cornerRadius: cornerRadius
-        )
+        #if JAILBREAK
+        // Jailbreak edition: push everything to the tweak overlay.
         syncToSharedPrefs()
+        #else
+        // TrollStore edition: restore the last system HUD level.
+        CADebugCommon.setPerfHUDLevel(hudLevel)
+        #endif
     }
 
     // MARK: - Shared prefs sync (for SpringBoard tweak)
@@ -212,7 +210,7 @@ final class HudSettings: ObservableObject {
     #if JAILBREAK
     /// Derives the roothide jbroot prefix from the app bundle path
     /// ("/var/containers/Bundle/Application/.jbroot-XXXXXXXX/..."), if any.
-    private static func jbrootPath() -> String? {
+    static func jbrootPath() -> String? {
         let bundle = Bundle.main.bundlePath
         guard let marker = bundle.range(of: "/.jbroot-") else { return nil }
         let afterMarker = bundle[marker.upperBound...]
