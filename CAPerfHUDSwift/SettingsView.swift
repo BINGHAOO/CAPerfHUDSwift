@@ -147,14 +147,6 @@ struct SettingsView: View {
     private var advancedSection: some View {
         Section(loc.string(.advanced)) {
             #if JAILBREAK
-            Toggle(isOn: $settings.useCustomOverlay) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(loc.string(.useCustomOverlay))
-                    Text(loc.string(.useCustomOverlayNote))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
             Toggle(isOn: $settings.autoApplyOnLaunch) {
                 Text(loc.string(.autoApplyOnLaunch))
             }

@@ -20,11 +20,12 @@
 |---|---|---|---|
 | `CAPerfHUD-rootful.deb` | unc0ver、palera1n rootful、checkra1n | `/Applications` + `/Library/MobileSubstrate/...` | `iphoneos-arm64e` |
 | `CAPerfHUD-rootless.deb` | Dopamine、palera1n rootless | `/var/jb/Applications` + `/var/jb/Library/...`（自动重映射） | `iphoneos-arm64` |
-| `CAPerfHUD-roothide.deb` | roothide（隐藏越狱的 Dopamine 分支） | jbroot（由 roothide 映射） | `iphoneos-arm64` |
+| `CAPerfHUD-roothide.deb` | roothide（隐藏越狱的 Dopamine 分支） | jbroot（由 roothide 映射） | `iphoneos-arm64e` |
 
 ## 功能
 
 - **系统 HUD 级别切换** — 在 10 个内置 Core Animation 性能 HUD 级别之间切换（关闭、基础、背景、粒子、完整、频率、功耗、仅帧率、显示、故障）。两个版本均支持。
+- **HUD 模式切换**（越狱版）— 在 HUD 页顶部分段选择「系统 HUD」或「自定义悬浮窗」，两者互斥不会同时显示。切换到自定义悬浮窗时自动关闭系统 HUD，切回时自动恢复上次的系统 HUD 级别。
 - **跨应用自定义悬浮窗（越狱版）** — 一个 SpringBoard 插件，在所有应用之上绘制悬浮 HUD。完全可配置：字体大小、位置、尺寸、颜色、透明度、圆角、边框。
 - **拖动移动** — 自定义悬浮窗可拖动到屏幕任意位置。
 - **中英双语界面** — 支持英文和简体中文，可在应用内切换。
@@ -112,11 +113,11 @@
 cd tweak
 make package FINALPACKAGE=1                                    # rootful
 THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1      # rootless (Dopamine)
-THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1 \
+THEOS_PACKAGE_SCHEME=roothide make package FINALPACKAGE=1 \
     THEOS=$HOME/theos-roothide                                 # roothide（需 roothide/theos）
 ```
 
-输出文件在 `tweak/packages/` 目录中。rootless/roothide 方案会自动把所有路径重映射到 `/var/jb`（或 jbroot 前缀），无需修改源码 — 应用与插件通信的 plist 位于 `/var/mobile/Library/Preferences/`，在所有越狱类型下位置相同。
+输出文件在 `tweak/packages/` 目录中。rootless 方案会自动把所有路径重映射到 `/var/jb`；roothide 方案以标准路径打包并强制包架构为 `iphoneos-arm64e`，由 roothide 的 dpkg 重映射到隐藏的 jbroot，roothide 版 Sileo 可直接安装（无需 patcher 转换）。无需修改源码 — 应用与插件通信的 plist 位于 `/var/mobile/Library/Preferences/`，在所有越狱类型下位置相同。
 
 ## GitHub Actions
 

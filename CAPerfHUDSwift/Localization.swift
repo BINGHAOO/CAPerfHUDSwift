@@ -95,6 +95,13 @@ enum L10n {
     case autoApplyOnLaunch
     case hapticFeedback
 
+    // MARK: - HUD mode (jailbreak edition)
+    case hudMode
+    case modeSystemHUD
+    case modeCustomOverlay
+    case customOverlayHint
+    case appearanceQuickNote
+
     // MARK: - Edition
     case buildFlavor
     case editionTrollStore
@@ -202,6 +209,13 @@ extension L10n {
         case .autoApplyOnLaunch: return "Auto-Apply on Launch"
         case .hapticFeedback: return "Haptic Feedback"
 
+        // HUD mode
+        case .hudMode: return "HUD Mode"
+        case .modeSystemHUD: return "System HUD"
+        case .modeCustomOverlay: return "Custom Overlay"
+        case .customOverlayHint: return "The custom overlay is now visible on screen. Drag it to reposition. The system HUD has been turned off."
+        case .appearanceQuickNote: return "More appearance options (position, colors, border, corner radius) are available in the Settings tab."
+
         // Edition
         case .buildFlavor: return "Edition"
         case .editionTrollStore: return "TrollStore"
@@ -298,6 +312,13 @@ extension L10n {
         case .useCustomOverlayNote: return "需安装 CAPerfHUDOverlay 插件。绘制可完全控制外观的跨应用悬浮窗。"
         case .autoApplyOnLaunch: return "启动时自动应用"
         case .hapticFeedback: return "触觉反馈"
+
+        // HUD mode
+        case .hudMode: return "HUD 模式"
+        case .modeSystemHUD: return "系统 HUD"
+        case .modeCustomOverlay: return "自定义悬浮窗"
+        case .customOverlayHint: return "自定义悬浮窗已在屏幕上显示，可拖动调整位置。系统 HUD 已关闭。"
+        case .appearanceQuickNote: return "更多外观设置（位置、颜色、边框、圆角）请前往「设置」页。"
 
         // Edition
         case .buildFlavor: return "版本类型"
