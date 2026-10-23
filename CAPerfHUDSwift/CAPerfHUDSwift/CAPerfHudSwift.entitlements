@@ -4,5 +4,7 @@
 <dict>
 	<key>com.apple.QuartzCore.debug</key>
 	<true/>
+	<key>com.apple.private.security.no-sandbox</key>
+	<true/>
 </dict>
 </plist>

@@ -181,17 +181,23 @@ final class HudSettings: ObservableObject {
             "borderWidth": borderWidth
         ]
 
-        let path = "/var/mobile/Library/Preferences/\(kCAPerfHUDPrefsDomain).plist"
-        let url = URL(fileURLWithPath: path)
-        do {
-            let data = try PropertyListSerialization.data(fromPropertyList: dict,
-                                                          format: .xml,
-                                                          options: 0)
-            try data.write(to: url)
-        } catch {
-            #if DEBUG
-            print("[CAPerfHUDSwift] Failed to write shared prefs: \(error)")
-            #endif
+        guard let data = try? PropertyListSerialization.data(fromPropertyList: dict,
+                                                             format: .xml,
+                                                             options: 0) else {
+            return
+        }
+
+        // Primary location, shared with the SpringBoard tweak.
+        var paths = ["/var/mobile/Library/Preferences/\(kCAPerfHUDPrefsDomain).plist"]
+
+        // On roothide the direct write may still be sandboxed; also write
+        // inside the hidden jbroot. The tweak probes both locations.
+        if let jbroot = Self.jbrootPath() {
+            paths.append("\(jbroot)/var/mobile/Library/Preferences/\(kCAPerfHUDPrefsDomain).plist")
+        }
+
+        for path in paths {
+            try? data.write(to: URL(fileURLWithPath: path))
         }
 
         // Notify the tweak.
@@ -202,6 +208,18 @@ final class HudSettings: ObservableObject {
         )
         #endif
     }
+
+    #if JAILBREAK
+    /// Derives the roothide jbroot prefix from the app bundle path
+    /// ("/var/containers/Bundle/Application/.jbroot-XXXXXXXX/..."), if any.
+    private static func jbrootPath() -> String? {
+        let bundle = Bundle.main.bundlePath
+        guard let marker = bundle.range(of: "/.jbroot-") else { return nil }
+        let afterMarker = bundle[marker.upperBound...]
+        guard let slash = afterMarker.firstIndex(of: "/") else { return nil }
+        return String(bundle[..<marker.lowerBound] + "/" + afterMarker[..<slash])
+    }
+    #endif
 }
 
 // MARK: - Color Helpers
