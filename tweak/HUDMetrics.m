@@ -481,7 +481,8 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
                                 // interval straight out of it.
                                 CFStringRef desc = CFCopyDescription(values[i]);
                                 NSString *s = desc ? (__bridge_transfer NSString *)desc : @"";
-                                if (desc) CFRelease(desc);
+                                // Ownership moved to ARC via __bridge_transfer;
+                                // releasing here too crashed SpringBoard (v1.8.8).
                                 s = [s stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
                                 double parsedRate = [self panelRateFromDescriptionText:s machTickNs:machTickNs];
                                 if (s.length > 900) {
