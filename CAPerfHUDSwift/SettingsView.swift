@@ -147,15 +147,6 @@ struct SettingsView: View {
             colorPickerRow(title: loc.string(.textColor), hex: $settings.textColorHex)
             colorPickerRow(title: loc.string(.bgColor), hex: $settings.bgColorHex)
 
-            Button {
-                settings.applyAppearance()
-                if settings.hapticFeedback {
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                }
-            } label: {
-                Label(loc.string(.applySettings), systemImage: "checkmark.circle")
-            }
-
             Text(loc.string(.experimentalNote))
                 .font(.caption)
                 .foregroundColor(.secondary)

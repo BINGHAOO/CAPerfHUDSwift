@@ -96,6 +96,7 @@ enum L10n {
     case hudMode
     case modeSystemHUD
     case modeCustomOverlay
+    case hudModeFooter
     case customOverlayHint
     case appearanceQuickNote
 
@@ -229,6 +230,7 @@ extension L10n {
         case .hudMode: return "HUD Mode"
         case .modeSystemHUD: return "System HUD"
         case .modeCustomOverlay: return "Custom Overlay"
+        case .hudModeFooter: return "Both can be enabled at the same time so you can compare them side by side."
         case .customOverlayHint: return "The custom overlay is now visible on screen. Drag it to reposition. The system HUD has been turned off."
         case .appearanceQuickNote: return "More appearance options (colors, border, corner radius) are available in the Settings tab."
 
@@ -352,6 +354,7 @@ extension L10n {
         case .hudMode: return "HUD 模式"
         case .modeSystemHUD: return "系统 HUD"
         case .modeCustomOverlay: return "自定义悬浮窗"
+        case .hudModeFooter: return "两个开关可以同时开启，方便对比两种 HUD 的效果。"
         case .customOverlayHint: return "自定义悬浮窗已在屏幕上显示，可拖动调整位置。系统 HUD 已关闭。"
         case .appearanceQuickNote: return "更多外观设置（颜色、边框、圆角）请前往「设置」页。"
 

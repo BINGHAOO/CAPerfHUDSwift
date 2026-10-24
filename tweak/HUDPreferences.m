@@ -1,5 +1,6 @@
 // HUDPreferences.m
 #import "HUDPreferences.h"
+#import "HUDMetrics.h"
 #import <dlfcn.h>
 
 NSString * const kCAPerfHUDPrefsDomain = @"com.binghaoo.caperfhud";
@@ -133,6 +134,16 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     diag[@"usedPath"] = _usedPath ?: @"";
     diag[@"prefsFound"] = @(_prefs.count > 0);
     diag[@"prefsKeyCount"] = @(_prefs.count);
+
+    // FPS diagnostics: which source produced the displayed value and what
+    // the display driver actually exposes on this device.
+    HUDMetrics *m = [HUDMetrics sharedMetrics];
+    diag[@"fpsDisplayed"] = @(m.fps);
+    diag[@"fpsDisplayLink"] = @(m.measuredFPS);
+    diag[@"fpsSource"] = m.hasPanelRefreshRate ? @"IORegistry display driver" : @"CADisplayLink (fallback)";
+    diag[@"fpsPanelHz"] = m.hasPanelRefreshRate ? @(m.panelRefreshRate) : @"unavailable";
+    diag[@"fpsPanelScan"] = m.panelScanSummary ?: @"";
+
     diag[@"enabled"] = @(self.enabled);
     diag[@"windowWidth"] = @(self.windowWidth);
     diag[@"windowHeight"] = @(self.windowHeight);

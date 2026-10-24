@@ -5,25 +5,12 @@
 import SwiftUI
 import QuartzCore
 
-#if JAILBREAK
-/// Which HUD implementation the user wants on screen.
-/// The two modes are mutually exclusive: enabling the custom overlay turns
-/// the system HUD off (and vice versa).
-enum HUDMode: Hashable {
-    case system
-    case custom
-}
-#endif
-
 struct ContentView: View {
     @EnvironmentObject var settings: HudSettings
     @EnvironmentObject var loc: LocalizationManager
 
     @State private var currentLevel: Int32 = 0
     @State private var showResetAlert = false
-    #if JAILBREAK
-    @State private var hudMode: HUDMode = .system
-    #endif
 
     var body: some View {
         TabView {
@@ -45,7 +32,6 @@ struct ContentView: View {
         .onAppear {
             currentLevel = CADebugCommon.getPerfHUDLevel()
             #if JAILBREAK
-            hudMode = settings.useCustomOverlay ? .custom : .system
             // Push the app's current state to the shared plist on launch so
             // the tweak never runs with stale preferences.
             settings.syncToSharedPrefs()
@@ -60,9 +46,6 @@ struct ContentView: View {
                 settings.resetAll()
                 CADebugCommon.setPerfHUDLevel(0)
                 currentLevel = 0
-                #if JAILBREAK
-                hudMode = .system
-                #endif
             }
         } message: {
             Text(loc.string(.resetMessage))
@@ -75,17 +58,25 @@ struct ContentView: View {
         NavigationView {
             List {
                 #if JAILBREAK
-                Section(loc.string(.hudMode)) {
-                    Picker(loc.string(.hudMode), selection: modeBinding) {
-                        Text(loc.string(.modeSystemHUD)).tag(HUDMode.system)
-                        Text(loc.string(.modeCustomOverlay)).tag(HUDMode.custom)
+                Section {
+                    Toggle(isOn: systemHUDOn) {
+                        Label(loc.string(.modeSystemHUD), systemImage: "gauge")
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
+                    Toggle(isOn: $settings.useCustomOverlay) {
+                        Label(loc.string(.modeCustomOverlay), systemImage: "rectangle.on.rectangle")
+                    }
+                } header: {
+                    Text(loc.string(.hudMode))
+                } footer: {
+                    Text(loc.string(.hudModeFooter))
                 }
                 #endif
 
-                hudModeContent
+                systemHUDSection
+
+                #if JAILBREAK
+                customOverlaySection
+                #endif
 
                 Section {
                     Button {
@@ -101,23 +92,28 @@ struct ContentView: View {
         .navigationViewStyle(.stack)
     }
 
-    // MARK: - Mode-specific content
+    // MARK: - Mode toggles (independent – both can be on for comparison)
 
-    @ViewBuilder
-    private var hudModeContent: some View {
-        #if JAILBREAK
-        switch hudMode {
-        case .system:
-            systemHUDSection
-        case .custom:
-            customOverlaySection
-        }
-        #else
-        systemHUDSection
-        #endif
+    #if JAILBREAK
+    private var systemHUDOn: Binding<Bool> {
+        Binding(
+            get: { currentLevel != 0 },
+            set: { on in
+                if on {
+                    applyLevel(settings.hudLevel > 0 ? settings.hudLevel : 1)
+                } else {
+                    applyLevel(0)
+                }
+                if settings.hapticFeedback {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                }
+            }
+        )
     }
+    #endif
 
-    /// Level picker for the system-rendered Core Animation HUD.
+    // MARK: - Level picker for the system-rendered Core Animation HUD
+
     private var systemHUDSection: some View {
         Section(loc.string(.selectHUDLevel)) {
             ForEach(Array(CADebugCommon.perfHUDLevelNames.enumerated()), id: \.offset) { index, name in
@@ -162,37 +158,6 @@ struct ContentView: View {
             Text(loc.string(.appearanceQuickNote))
                 .font(.caption)
                 .foregroundColor(.secondary)
-        }
-    }
-
-    private var modeBinding: Binding<HUDMode> {
-        Binding(
-            get: { hudMode },
-            set: { newMode in
-                guard newMode != hudMode else { return }
-                hudMode = newMode
-                switchMode(newMode)
-            }
-        )
-    }
-
-    private func switchMode(_ mode: HUDMode) {
-        withAnimation(.default) {
-            switch mode {
-            case .system:
-                // Hide the tweak overlay and restore the last system HUD level.
-                settings.useCustomOverlay = false
-                applyLevel(settings.hudLevel)
-            case .custom:
-                // Show the tweak overlay and turn the system HUD off so the
-                // two never overlap.
-                settings.useCustomOverlay = true
-                CADebugCommon.setPerfHUDLevel(0)
-                currentLevel = CADebugCommon.getPerfHUDLevel()
-            }
-            if settings.hapticFeedback {
-                UISelectionFeedbackGenerator().selectionChanged()
-            }
         }
     }
 

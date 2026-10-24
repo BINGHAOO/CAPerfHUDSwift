@@ -16,13 +16,18 @@
 // (AppleSmartBattery / IOPMPowerSource), the classic and most reliable
 // source on jailbroken iOS.
 typedef uint32_t io_service_t_c;
+typedef uint32_t io_iterator_t_c;
 typedef CFMutableDictionaryRef (*IOServiceMatchingFn)(const char *name);
 typedef io_service_t_c (*IOServiceGetMatchingServiceFn)(mach_port_t masterPort, CFDictionaryRef matching);
+typedef kern_return_t (*IOServiceGetMatchingServicesFn)(mach_port_t masterPort, CFDictionaryRef matching, io_iterator_t_c *iterator);
+typedef io_service_t_c (*IOIteratorNextFn)(io_iterator_t_c iterator);
 typedef kern_return_t (*IORegistryEntryCreateCFPropertiesFn)(uint32_t entry, CFMutableDictionaryRef *properties, CFAllocatorRef allocator, UInt32 options);
 typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
 
 static IOServiceMatchingFn gServiceMatching = NULL;
 static IOServiceGetMatchingServiceFn gGetService = NULL;
+static IOServiceGetMatchingServicesFn gGetMatchingServices = NULL;
+static IOIteratorNextFn gIteratorNext = NULL;
 static IORegistryEntryCreateCFPropertiesFn gCreateProps = NULL;
 static IOObjectReleaseFn gObjectRelease = NULL;
 
@@ -33,6 +38,8 @@ static void EnsureIOKitSymbols(void) {
         if (!handle) return;
         gServiceMatching = (IOServiceMatchingFn)dlsym(handle, "IOServiceMatching");
         gGetService = (IOServiceGetMatchingServiceFn)dlsym(handle, "IOServiceGetMatchingService");
+        gGetMatchingServices = (IOServiceGetMatchingServicesFn)dlsym(handle, "IOServiceGetMatchingServices");
+        gIteratorNext = (IOIteratorNextFn)dlsym(handle, "IOIteratorNext");
         gCreateProps = (IORegistryEntryCreateCFPropertiesFn)dlsym(handle, "IORegistryEntryCreateCFProperties");
         gObjectRelease = (IOObjectReleaseFn)dlsym(handle, "IOObjectRelease");
     });
@@ -65,9 +72,10 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
 @property (nonatomic) NSTimeInterval lastTimestamp;
 @property (nonatomic) NSInteger frameCount;
 @property (nonatomic) double fps;
-@property (nonatomic) double measuredFPS;    // CADisplayLink count (clamped to 60 in SpringBoard)
+@property (nonatomic) double measuredFPS;      // CADisplayLink count (may be clamped to 60)
 @property (nonatomic) double panelRefreshRate; // real panel Hz from the display driver
 @property (nonatomic) BOOL hasPanelRefreshRate;
+@property (nonatomic, copy) NSString *panelScanSummary;
 @property (nonatomic) double memoryMB;
 @property (nonatomic) double memoryTotalMB;
 @property (nonatomic) double cpuPercent;
@@ -116,6 +124,7 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
         _netDownKBps = 0;
         _netUpKBps = 0;
         _batteryPercent = -1;
+        _panelScanSummary = @"not scanned yet";
     }
     return self;
 }
@@ -124,16 +133,15 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
     if (self.displayLink) return;
 
     self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];
-    CGFloat maxFPS = [UIScreen mainScreen].maximumFramesPerSecond;
     if (@available(iOS 15.0, *)) {
-        // Request the full ProMotion band explicitly. Do NOT derive this from
-        // UIScreen.maximumFramesPerSecond: in some SpringBoard environments it
-        // reports 60, which would silently clamp the whole range back to 60.
-        // On 60 Hz panels the system clamps the maximum automatically.
-        CAFrameRateRange range = CAFrameRateRangeMake(60.0f, 120.0f, 120.0f);
+        // Ask for 120 Hz unconditionally. On 60 Hz panels the system clamps
+        // the maximum automatically, so this is safe everywhere; on
+        // ProMotion devices a lower minimum (e.g. 60) has been observed to
+        // make iOS 15 fall back to the 60 Hz vsync track.
+        CAFrameRateRange range = CAFrameRateRangeMake(120.0f, 120.0f, 120.0f);
         self.displayLink.preferredFrameRateRange = range;
     } else {
-        self.displayLink.preferredFramesPerSecond = maxFPS;
+        self.displayLink.preferredFramesPerSecond = [UIScreen mainScreen].maximumFramesPerSecond;
     }
     [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 
@@ -313,48 +321,80 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
 
 // The honest source for the FPS row. CADisplayLink inside SpringBoard is
 // pinned to the 60 Hz UI vsync regardless of what the panel does, so we read
-// the refresh rate straight from the display driver's IORegistry node
-// (AppleDisplay). On ProMotion devices this tracks the panel live: LTPO
-// downshifts when idle, ~120 while scrolling.
+// the refresh rate straight from the display driver's IORegistry nodes. All
+// instances of every display-related class are scanned for a refresh/hz
+// property; whatever is found is also recorded in panelScanSummary so the
+// diagnostics page can show exactly what the driver exposes on this device.
 - (void)samplePanelRefreshRate {
     EnsureIOKitSymbols();
 
-    for (NSString *cls in @[@"AppleDisplay", @"IOMobileFramebufferShim"]) {
-        CFMutableDictionaryRef props = NULL;
-        io_service_t_c service = 0;
-        if (!CopyFirstServiceProperties(cls, &props, &service)) continue;
+    NSMutableArray<NSString *> *summary = [NSMutableArray array];
+    double foundHz = -1;
 
-        BOOL found = NO;
-        CFIndex count = CFDictionaryGetCount(props);
-        if (count > 0) {
-            const void **keys = malloc(sizeof(void *) * count);
-            const void **values = malloc(sizeof(void *) * count);
-            // CFDictionaryGetKeysAndValues fills both arrays (void return).
-            CFDictionaryGetKeysAndValues(props, keys, values);
-            for (CFIndex i = 0; i < count; i++) {
-                if (CFGetTypeID(keys[i]) != CFStringGetTypeID()) continue;
-                NSString *key = (__bridge NSString *)keys[i];
-                if (![key.lowercaseString containsString:@"refresh"]) continue;
-                if (CFGetTypeID(values[i]) != CFNumberGetTypeID()) continue;
+    if (gServiceMatching && gGetMatchingServices && gIteratorNext && gCreateProps && gObjectRelease) {
+        for (NSString *cls in @[@"AppleDisplay", @"IOMobileFramebuffer", @"IOMobileFramebufferShim"]) {
+            CFMutableDictionaryRef matching = gServiceMatching(cls.UTF8String);
+            if (!matching) continue;
+            // IOServiceGetMatchingServices consumes one reference to matching.
+            io_iterator_t_c iter = 0;
+            if (gGetMatchingServices(0, matching, &iter) != KERN_SUCCESS || !iter) continue;
 
-                double hz = 0;
-                if (CFNumberGetValue((CFNumberRef)values[i], kCFNumberDoubleType, &hz) &&
-                    hz >= 1.0 && hz <= 240.0) {
-                    self.panelRefreshRate = hz;
-                    self.hasPanelRefreshRate = YES;
-                    found = YES;
-                    break;
+            int idx = 0;
+            io_service_t_c service = 0;
+            while ((service = gIteratorNext(iter)) != 0) {
+                CFMutableDictionaryRef props = NULL;
+                if (gCreateProps(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS && props) {
+                    CFIndex count = CFDictionaryGetCount(props);
+                    if (count > 0) {
+                        const void **keys = malloc(sizeof(void *) * count);
+                        const void **values = malloc(sizeof(void *) * count);
+                        // CFDictionaryGetKeysAndValues fills both arrays (void return).
+                        CFDictionaryGetKeysAndValues(props, keys, values);
+                        for (CFIndex i = 0; i < count; i++) {
+                            if (CFGetTypeID(keys[i]) != CFStringGetTypeID()) continue;
+                            NSString *key = (__bridge NSString *)keys[i];
+                            NSString *lower = key.lowercaseString;
+                            BOOL looksLikeRate = [lower containsString:@"refresh"] ||
+                                                 [lower containsString:@"hz"] ||
+                                                 [lower containsString:@"framerate"];
+                            if (!looksLikeRate) continue;
+
+                            if (CFGetTypeID(values[i]) == CFNumberGetTypeID()) {
+                                double hz = 0;
+                                if (CFNumberGetValue((CFNumberRef)values[i], kCFNumberDoubleType, &hz) &&
+                                    hz >= 1.0 && hz <= 240.0) {
+                                    [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=%.0f", cls, idx, key, hz]];
+                                    if (foundHz < 0) foundHz = hz;
+                                } else {
+                                    [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<out-of-range>", cls, idx, key]];
+                                }
+                            } else {
+                                [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<non-number>", cls, idx, key]];
+                            }
+                        }
+                        free(keys);
+                        free(values);
+                    }
+                    CFRelease(props);
                 }
+                gObjectRelease(service);
+                idx++;
             }
-            free(keys);
-            free(values);
+            gObjectRelease(iter);
         }
-        CFRelease(props);
-        gObjectRelease(service);
-        if (found) return;
     }
 
-    self.hasPanelRefreshRate = NO;
+    if (summary.count == 0) {
+        [summary addObject:@"no refresh-related keys found"];
+    }
+    self.panelScanSummary = [summary componentsJoinedByString:@"; "];
+
+    if (foundHz > 0) {
+        self.panelRefreshRate = foundHz;
+        self.hasPanelRefreshRate = YES;
+    } else {
+        self.hasPanelRefreshRate = NO;
+    }
 }
 
 #pragma mark - Network throughput (all interfaces, loopback excluded)

@@ -7,8 +7,10 @@
 #import "HUDMetrics.h"
 #import <QuartzCore/QuartzCore.h>
 
-// Horizontal safe margin so left/right aligned text does not hug the border.
+// Safe margins so left/right aligned text does not hug the border, and so
+// the first/last line do not touch the top/bottom edges.
 static const CGFloat kTextHPadding = 8.0;
+static const CGFloat kTextVPadding = 6.0;
 
 @implementation HUDOverlayView {
     UILabel *_label;
@@ -147,9 +149,9 @@ static const CGFloat kTextHPadding = 8.0;
 }
 
 - (void)layoutLabel {
-    _label.frame = CGRectMake(kTextHPadding, 0,
+    _label.frame = CGRectMake(kTextHPadding, kTextVPadding,
                               MAX(0, self.bounds.size.width - kTextHPadding * 2),
-                              self.bounds.size.height);
+                              MAX(0, self.bounds.size.height - kTextVPadding * 2));
 }
 
 #pragma mark - Dragging
@@ -282,13 +284,14 @@ static NSString *PaddedTag(NSString *tag) {
     }
     [self layoutLabel];
 
-    // Height: fit every line.
+    // Height: fit every line plus the top/bottom safe margins.
     CGSize fit = [_label sizeThatFits:CGSizeMake(MAX(0, self.bounds.size.width - kTextHPadding * 2), CGFLOAT_MAX)];
-    CGFloat needed = MAX(fit.height, _label.font.lineHeight);
+    CGFloat minHeight = _label.font.lineHeight + kTextVPadding * 2;
+    CGFloat needed = MAX(fit.height, _label.font.lineHeight) + kTextVPadding * 2;
 
     // Never grow past the bottom of the screen.
     CGFloat maxH = [UIScreen mainScreen].bounds.size.height - self.frame.origin.y - 8;
-    needed = MIN(needed, MAX(maxH, _label.font.lineHeight));
+    needed = MIN(needed, MAX(maxH, minHeight));
 
     if (fabs(self.frame.size.height - needed) > 0.5) {
         CGRect f = self.frame;
