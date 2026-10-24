@@ -61,6 +61,29 @@ final class HudSettings: ObservableObject {
         didSet { UserDefaults.standard.set(borderWidth, forKey: "HUDBorderWidth"); scheduleSync() }
     }
 
+    // MARK: - Metric Visibility (custom overlay)
+    @Published var showFPS: Bool {
+        didSet { UserDefaults.standard.set(showFPS, forKey: "HUDShowFPS"); scheduleSync() }
+    }
+    @Published var showCPU: Bool {
+        didSet { UserDefaults.standard.set(showCPU, forKey: "HUDShowCPU"); scheduleSync() }
+    }
+    @Published var showMemory: Bool {
+        didSet { UserDefaults.standard.set(showMemory, forKey: "HUDShowMemory"); scheduleSync() }
+    }
+    @Published var showTemperature: Bool {
+        didSet { UserDefaults.standard.set(showTemperature, forKey: "HUDShowTemperature"); scheduleSync() }
+    }
+    @Published var showPower: Bool {
+        didSet { UserDefaults.standard.set(showPower, forKey: "HUDShowPower"); scheduleSync() }
+    }
+    @Published var showNetwork: Bool {
+        didSet { UserDefaults.standard.set(showNetwork, forKey: "HUDShowNetwork"); scheduleSync() }
+    }
+    @Published var showBattery: Bool {
+        didSet { UserDefaults.standard.set(showBattery, forKey: "HUDShowBattery"); scheduleSync() }
+    }
+
     // MARK: - Behavior
     @Published var autoApplyOnLaunch: Bool {
         didSet { UserDefaults.standard.set(autoApplyOnLaunch, forKey: "HUDAutoApply") }
@@ -102,6 +125,16 @@ final class HudSettings: ObservableObject {
         self.showBorder = defaults.bool(forKey: "HUDShowBorder")
         self.borderWidth = defaults.object(forKey: "HUDBorderWidth") as? Double ?? 1
 
+        // Metrics default to the classic FPS/CPU/MEM set; the extras stay off
+        // until the user opts in.
+        self.showFPS = defaults.object(forKey: "HUDShowFPS") as? Bool ?? true
+        self.showCPU = defaults.object(forKey: "HUDShowCPU") as? Bool ?? true
+        self.showMemory = defaults.object(forKey: "HUDShowMemory") as? Bool ?? true
+        self.showTemperature = defaults.object(forKey: "HUDShowTemperature") as? Bool ?? false
+        self.showPower = defaults.object(forKey: "HUDShowPower") as? Bool ?? false
+        self.showNetwork = defaults.object(forKey: "HUDShowNetwork") as? Bool ?? false
+        self.showBattery = defaults.object(forKey: "HUDShowBattery") as? Bool ?? false
+
         self.autoApplyOnLaunch = defaults.object(forKey: "HUDAutoApply") as? Bool ?? true
         self.hapticFeedback = defaults.object(forKey: "HUDHaptic") as? Bool ?? true
     }
@@ -123,6 +156,13 @@ final class HudSettings: ObservableObject {
         bgColorHex = "#000000"
         showBorder = false
         borderWidth = 1
+        showFPS = true
+        showCPU = true
+        showMemory = true
+        showTemperature = false
+        showPower = false
+        showNetwork = false
+        showBattery = false
         autoApplyOnLaunch = true
         hapticFeedback = true
         syncToSharedPrefs()
@@ -173,7 +213,14 @@ final class HudSettings: ObservableObject {
             "textColorHex": textColorHex,
             "bgColorHex": bgColorHex,
             "showBorder": showBorder,
-            "borderWidth": borderWidth
+            "borderWidth": borderWidth,
+            "showFPS": showFPS,
+            "showCPU": showCPU,
+            "showMemory": showMemory,
+            "showTemperature": showTemperature,
+            "showPower": showPower,
+            "showNetwork": showNetwork,
+            "showBattery": showBattery
         ]
 
         // 1. Defaults suite. This is the guaranteed channel: even when the

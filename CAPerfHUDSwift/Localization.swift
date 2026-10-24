@@ -109,6 +109,17 @@ enum L10n {
     case diagnosticsCopy
     case diagnosticsCopied
 
+    // MARK: - Metrics (jailbreak custom overlay)
+    case metricsContent
+    case metricsContentNote
+    case metricFPS
+    case metricCPU
+    case metricMemory
+    case metricTemperature
+    case metricPower
+    case metricNetwork
+    case metricBattery
+
     // MARK: - About
     case appName
     case appVersion
@@ -225,6 +236,17 @@ extension L10n {
         case .diagnosticsCopy: return "Copy report"
         case .diagnosticsCopied: return "Copied"
 
+        // Metrics (jailbreak custom overlay)
+        case .metricsContent: return "Displayed Metrics"
+        case .metricsContentNote: return "Choose which values appear on the custom overlay."
+        case .metricFPS: return "Frame rate (FPS)"
+        case .metricCPU: return "CPU usage"
+        case .metricMemory: return "Memory usage"
+        case .metricTemperature: return "Temperature"
+        case .metricPower: return "Power draw"
+        case .metricNetwork: return "Network speed"
+        case .metricBattery: return "Battery level"
+
         // About
         case .appName: return "CAPerfHUDSwift"
         case .appVersion: return "Version"
@@ -330,6 +352,17 @@ extension L10n {
         case .diagnosticsSent: return "已发送 – 查看下方插件状态"
         case .diagnosticsCopy: return "复制报告"
         case .diagnosticsCopied: return "已复制"
+
+        // 指标显示（越狱版自定义悬浮窗）
+        case .metricsContent: return "显示内容"
+        case .metricsContentNote: return "选择悬浮窗上显示哪些信息。"
+        case .metricFPS: return "帧率 (FPS)"
+        case .metricCPU: return "CPU 占用"
+        case .metricMemory: return "内存占用"
+        case .metricTemperature: return "设备温度"
+        case .metricPower: return "实时功耗"
+        case .metricNetwork: return "网速"
+        case .metricBattery: return "电池电量"
 
         // About
         case .appName: return "CAPerfHUDSwift"

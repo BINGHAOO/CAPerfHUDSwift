@@ -14,6 +14,7 @@ struct SettingsView: View {
         NavigationView {
             List {
                 #if JAILBREAK
+                metricsSection
                 appearanceSection
                 #endif
                 languageSection
@@ -32,6 +33,40 @@ struct SettingsView: View {
         }
         .navigationViewStyle(.stack)
     }
+
+    // MARK: - Metric Visibility (jailbreak edition – custom overlay content)
+
+    #if JAILBREAK
+    private var metricsSection: some View {
+        Section {
+            Toggle(isOn: $settings.showFPS) {
+                Label(loc.string(.metricFPS), systemImage: "speedometer")
+            }
+            Toggle(isOn: $settings.showCPU) {
+                Label(loc.string(.metricCPU), systemImage: "cpu")
+            }
+            Toggle(isOn: $settings.showMemory) {
+                Label(loc.string(.metricMemory), systemImage: "memorychip")
+            }
+            Toggle(isOn: $settings.showTemperature) {
+                Label(loc.string(.metricTemperature), systemImage: "thermometer")
+            }
+            Toggle(isOn: $settings.showPower) {
+                Label(loc.string(.metricPower), systemImage: "bolt")
+            }
+            Toggle(isOn: $settings.showNetwork) {
+                Label(loc.string(.metricNetwork), systemImage: "network")
+            }
+            Toggle(isOn: $settings.showBattery) {
+                Label(loc.string(.metricBattery), systemImage: "battery.100")
+            }
+        } header: {
+            Text(loc.string(.metricsContent))
+        } footer: {
+            Text(loc.string(.metricsContentNote))
+        }
+    }
+    #endif
 
     // MARK: - Appearance (jailbreak edition only – configures the tweak overlay)
 

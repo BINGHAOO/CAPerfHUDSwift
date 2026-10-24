@@ -36,4 +36,13 @@ extern NSString * const kCAPerfHUDSettingsChangedNotification;
 @property (nonatomic, readonly) BOOL showBorder;
 @property (nonatomic, readonly) CGFloat borderWidth;
 
+// Which metrics appear on the overlay (defaults: FPS/CPU/MEM on, rest off).
+@property (nonatomic, readonly) BOOL showFPS;
+@property (nonatomic, readonly) BOOL showCPU;
+@property (nonatomic, readonly) BOOL showMemory;
+@property (nonatomic, readonly) BOOL showTemperature;
+@property (nonatomic, readonly) BOOL showPower;
+@property (nonatomic, readonly) BOOL showNetwork;
+@property (nonatomic, readonly) BOOL showBattery;
+
 @end

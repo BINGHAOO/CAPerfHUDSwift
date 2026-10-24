@@ -26,7 +26,8 @@ The Jailbreak Edition is built in **three variants**, one for each jailbreak typ
 
 - **System HUD Level Control** — Switch between the 10 built-in Core Animation perf HUD levels (Off, Basic, Backdrop, Particles, Full, Frequencies, Power, FPS only, Display, Glitches). Available in both editions.
 - **HUD Mode Switch** (jailbreak edition) — Pick between the system HUD and the custom cross-app overlay on the HUD tab; the two are mutually exclusive, so they never overlap. Switching to the custom overlay turns the system HUD off automatically (and restores your last level when switching back).
-- **Cross-App Custom Overlay (Jailbreak Edition)** — A SpringBoard tweak that draws a floating HUD over every app. Fully configurable: font size, position, size, colors, opacity, corner radius, border.
+- **Cross-App Custom Overlay (Jailbreak Edition)** — A SpringBoard tweak that draws a floating HUD over every app. Fully configurable: font size, size, colors, opacity, corner radius, border.
+- **Selectable Metrics** (jailbreak edition) — Toggle exactly what the overlay shows: FPS, CPU usage, memory, device temperature, power draw (battery V×A), network speed (global up/down) and battery level. Everything is sampled device-wide, and the FPS meter requests the panel's maximum refresh rate so ProMotion (120 Hz) screens report real values.
 - **Drag to Move** — The custom overlay can be dragged anywhere on screen.
 - **Bilingual UI** — English and Simplified Chinese, switchable from within the app.
 - **Edition Badge** — The About tab shows which edition you are running (TrollStore or Jailbreak).

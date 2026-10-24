@@ -147,11 +147,60 @@
 
 #pragma mark - Metrics text
 
+// 3500 MB reads better as 3.42 GB on a narrow panel.
+static NSString *FormattedMemory(double mb) {
+    if (mb >= 1024.0) return [NSString stringWithFormat:@"%.2f GB", mb / 1024.0];
+    return [NSString stringWithFormat:@"%.0f MB", mb];
+}
+
+static NSString *FormattedSpeed(double kbps) {
+    if (kbps >= 1024.0) return [NSString stringWithFormat:@"%.1f MB/s", kbps / 1024.0];
+    return [NSString stringWithFormat:@"%.0f KB/s", kbps];
+}
+
 - (void)refreshText {
     HUDMetrics *m = [HUDMetrics sharedMetrics];
-    NSString *text = [NSString stringWithFormat:@"FPS: %.0f\nCPU: %.0f%%\nMEM: %.1f MB",
-                      m.fps, m.cpuPercent, m.memoryMB];
-    _label.text = text;
+    HUDPreferences *prefs = [HUDPreferences sharedPreferences];
+
+    NSMutableArray<NSString *> *lines = [NSMutableArray array];
+    if (prefs.showFPS) {
+        [lines addObject:[NSString stringWithFormat:@"FPS  %.0f", m.fps]];
+    }
+    if (prefs.showCPU) {
+        [lines addObject:[NSString stringWithFormat:@"CPU  %.0f%%", m.cpuPercent]];
+    }
+    if (prefs.showMemory) {
+        [lines addObject:[NSString stringWithFormat:@"MEM  %@", FormattedMemory(m.memoryMB)]];
+    }
+    if (prefs.showTemperature) {
+        if (m.temperatureC >= 0) {
+            [lines addObject:[NSString stringWithFormat:@"TEMP %.1f°C", m.temperatureC]];
+        } else {
+            [lines addObject:@"TEMP N/A"];
+        }
+    }
+    if (prefs.showPower) {
+        if (m.powerWatts >= 0) {
+            [lines addObject:[NSString stringWithFormat:@"PWR  %.2f W", m.powerWatts]];
+        } else {
+            [lines addObject:@"PWR  N/A"];
+        }
+    }
+    if (prefs.showNetwork) {
+        [lines addObject:[NSString stringWithFormat:@"NET  ↓%@ ↑%@", FormattedSpeed(m.netDownKBps), FormattedSpeed(m.netUpKBps)]];
+    }
+    if (prefs.showBattery) {
+        if (m.batteryPercent >= 0) {
+            [lines addObject:[NSString stringWithFormat:@"BAT  %.0f%%", m.batteryPercent]];
+        } else {
+            [lines addObject:@"BAT  N/A"];
+        }
+    }
+
+    if (lines.count == 0) {
+        [lines addObject:@"No metrics selected"];
+    }
+    _label.text = [lines componentsJoinedByString:@"\n"];
 }
 
 #pragma mark - Helpers

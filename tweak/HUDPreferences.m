@@ -211,4 +211,39 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     return val ? [val doubleValue] : 1;
 }
 
+- (BOOL)showFPS {
+    id val = [self objectForKey:@"showFPS"];
+    return val ? [val boolValue] : YES;
+}
+
+- (BOOL)showCPU {
+    id val = [self objectForKey:@"showCPU"];
+    return val ? [val boolValue] : YES;
+}
+
+- (BOOL)showMemory {
+    id val = [self objectForKey:@"showMemory"];
+    return val ? [val boolValue] : YES;
+}
+
+- (BOOL)showTemperature {
+    id val = [self objectForKey:@"showTemperature"];
+    return val ? [val boolValue] : NO;
+}
+
+- (BOOL)showPower {
+    id val = [self objectForKey:@"showPower"];
+    return val ? [val boolValue] : NO;
+}
+
+- (BOOL)showNetwork {
+    id val = [self objectForKey:@"showNetwork"];
+    return val ? [val boolValue] : NO;
+}
+
+- (BOOL)showBattery {
+    id val = [self objectForKey:@"showBattery"];
+    return val ? [val boolValue] : NO;
+}
+
 @end
