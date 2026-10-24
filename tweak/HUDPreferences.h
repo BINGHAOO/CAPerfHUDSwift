@@ -40,6 +40,8 @@ extern NSString * const kCAPerfHUDSettingsChangedNotification;
 @property (nonatomic, readonly) BOOL showFPS;
 @property (nonatomic, readonly) BOOL showCPU;
 @property (nonatomic, readonly) BOOL showMemory;
+// Append the used-RAM percentage next to the absolute memory value.
+@property (nonatomic, readonly) BOOL showMemoryPercent;
 @property (nonatomic, readonly) BOOL showTemperature;
 @property (nonatomic, readonly) BOOL showPower;
 @property (nonatomic, readonly) BOOL showNetwork;

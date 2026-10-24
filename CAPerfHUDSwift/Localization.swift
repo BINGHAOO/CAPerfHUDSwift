@@ -115,6 +115,7 @@ enum L10n {
     case metricFPS
     case metricCPU
     case metricMemory
+    case memoryPercent
     case metricTemperature
     case metricPower
     case metricNetwork
@@ -247,6 +248,7 @@ extension L10n {
         case .metricFPS: return "Frame rate (FPS)"
         case .metricCPU: return "CPU usage"
         case .metricMemory: return "Memory usage"
+        case .memoryPercent: return "Show percentage"
         case .metricTemperature: return "Temperature"
         case .metricPower: return "Power draw"
         case .metricNetwork: return "Network speed"
@@ -369,6 +371,7 @@ extension L10n {
         case .metricFPS: return "帧率 (FPS)"
         case .metricCPU: return "CPU 占用"
         case .metricMemory: return "内存占用"
+        case .memoryPercent: return "显示百分比"
         case .metricTemperature: return "设备温度"
         case .metricPower: return "实时功耗"
         case .metricNetwork: return "网速"

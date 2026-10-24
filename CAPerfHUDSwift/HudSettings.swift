@@ -71,6 +71,9 @@ final class HudSettings: ObservableObject {
     @Published var showMemory: Bool {
         didSet { UserDefaults.standard.set(showMemory, forKey: "HUDShowMemory"); scheduleSync() }
     }
+    @Published var showMemoryPercent: Bool {
+        didSet { UserDefaults.standard.set(showMemoryPercent, forKey: "HUDShowMemoryPercent"); scheduleSync() }
+    }
     @Published var showTemperature: Bool {
         didSet { UserDefaults.standard.set(showTemperature, forKey: "HUDShowTemperature"); scheduleSync() }
     }
@@ -139,6 +142,7 @@ final class HudSettings: ObservableObject {
         self.showFPS = defaults.object(forKey: "HUDShowFPS") as? Bool ?? true
         self.showCPU = defaults.object(forKey: "HUDShowCPU") as? Bool ?? true
         self.showMemory = defaults.object(forKey: "HUDShowMemory") as? Bool ?? true
+        self.showMemoryPercent = defaults.object(forKey: "HUDShowMemoryPercent") as? Bool ?? true
         self.showTemperature = defaults.object(forKey: "HUDShowTemperature") as? Bool ?? false
         self.showPower = defaults.object(forKey: "HUDShowPower") as? Bool ?? false
         self.showNetwork = defaults.object(forKey: "HUDShowNetwork") as? Bool ?? false
@@ -171,6 +175,7 @@ final class HudSettings: ObservableObject {
         showFPS = true
         showCPU = true
         showMemory = true
+        showMemoryPercent = true
         showTemperature = false
         showPower = false
         showNetwork = false
@@ -231,6 +236,7 @@ final class HudSettings: ObservableObject {
             "showFPS": showFPS,
             "showCPU": showCPU,
             "showMemory": showMemory,
+            "showMemoryPercent": showMemoryPercent,
             "showTemperature": showTemperature,
             "showPower": showPower,
             "showNetwork": showNetwork,

@@ -28,6 +28,7 @@ typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
 @property (nonatomic) NSInteger frameCount;
 @property (nonatomic) double fps;
 @property (nonatomic) double memoryMB;
+@property (nonatomic) double memoryTotalMB;
 @property (nonatomic) double cpuPercent;
 @property (nonatomic) double temperatureC;   // °C, <0 = unknown
 @property (nonatomic) double powerWatts;     // W,  <0 = unknown
@@ -65,6 +66,7 @@ typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
     if (self) {
         _fps = 0;
         _memoryMB = 0;
+        _memoryTotalMB = 0;
         _cpuPercent = 0;
         _lastTimestamp = 0;
         _frameCount = 0;
@@ -83,14 +85,11 @@ typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
     self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];
     CGFloat maxFPS = [UIScreen mainScreen].maximumFramesPerSecond;
     if (@available(iOS 15.0, *)) {
-        // On iOS 15+ ProMotion devices an explicit frame rate range is
-        // required to unlock the 120 Hz panel. IMPORTANT: the minimum must
-        // not be tiny – a floor of 1 makes the scheduler keep the link
-        // pinned at 60 Hz (the classic "FPS always 60" symptom). A floor of
-        // half the maximum (60 on ProMotion) reliably unlocks 120 Hz, and
-        // the readout still varies live with content (60 idle / 120 moving).
-        float minimum = maxFPS >= 90 ? maxFPS / 2.0f : 1.0f;
-        CAFrameRateRange range = CAFrameRateRangeMake(minimum, maxFPS, maxFPS);
+        // Request the full ProMotion band explicitly. Do NOT derive this from
+        // UIScreen.maximumFramesPerSecond: in some SpringBoard environments it
+        // reports 60, which would silently clamp the whole range back to 60.
+        // On 60 Hz panels the system clamps the maximum automatically.
+        CAFrameRateRange range = CAFrameRateRangeMake(60.0f, 120.0f, 120.0f);
         self.displayLink.preferredFrameRateRange = range;
     } else {
         self.displayLink.preferredFramesPerSecond = maxFPS;
@@ -146,6 +145,7 @@ typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
             totalBytes = (int64_t)(vmStat.free_count + vmStat.active_count + vmStat.inactive_count +
                                    vmStat.wire_count + vmStat.purgeable_count + vmStat.compressor_page_count) * (int64_t)pageSize;
         }
+        self.memoryTotalMB = (double)totalBytes / (1024.0 * 1024.0);
 
         int64_t usedBytes = (int64_t)(vmStat.wire_count + vmStat.active_count + vmStat.compressor_page_count) * (int64_t)pageSize;
         if (usedBytes > totalBytes) usedBytes = totalBytes;

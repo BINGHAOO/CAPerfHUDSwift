@@ -48,6 +48,12 @@ struct SettingsView: View {
             Toggle(isOn: $settings.showMemory) {
                 Label(loc.string(.metricMemory), systemImage: "memorychip")
             }
+            if settings.showMemory {
+                Toggle(isOn: $settings.showMemoryPercent) {
+                    Label(loc.string(.memoryPercent), systemImage: "percent")
+                        .padding(.leading, 16)
+                }
+            }
             Toggle(isOn: $settings.showTemperature) {
                 Label(loc.string(.metricTemperature), systemImage: "thermometer")
             }

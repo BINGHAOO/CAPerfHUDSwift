@@ -5,6 +5,10 @@
 #import "HUDOverlayView.h"
 #import "HUDPreferences.h"
 #import "HUDMetrics.h"
+#import <QuartzCore/QuartzCore.h>
+
+// Horizontal safe margin so left/right aligned text does not hug the border.
+static const CGFloat kTextHPadding = 8.0;
 
 @implementation HUDOverlayView {
     UILabel *_label;
@@ -60,7 +64,7 @@
     y = MAX(0, MIN(y, screenH - h));
 
     self.frame = CGRectMake(x, y, w, h);
-    _label.frame = self.bounds;
+    [self layoutLabel];
     _hasSetInitialPosition = YES;
 }
 
@@ -92,7 +96,7 @@
     frame.size.width = prefs.windowWidth;
     if (!prefs.autoHeight) frame.size.height = prefs.windowHeight;
     self.frame = frame;
-    _label.frame = self.bounds;
+    [self layoutLabel];
 
     // Background
     UIColor *bg = [self colorFromHex:prefs.bgColorHex];
@@ -113,6 +117,22 @@
     _label.font = [UIFont monospacedDigitSystemFontOfSize:prefs.fontSize weight:UIFontWeightMedium];
     _label.textColor = [self colorFromHex:prefs.textColorHex];
     _label.textAlignment = [self alignmentForIndex:prefs.textAlignment];
+
+    // Keep the panel render-active: without any live Core Animation activity,
+    // iOS clamps a CADisplayLink to the idle 60 Hz UI rate and the FPS readout
+    // sticks at ~60 even when the panel is capable of more. The 0.1 % opacity
+    // wiggle is invisible but keeps the layer on the render server's active
+    // list, so the display link tracks the requested (up to 120 Hz) rate.
+    if ([self.layer animationForKey:@"hudKeepAlive"] == nil) {
+        CABasicAnimation *keepAlive = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        keepAlive.fromValue = @1.0;
+        keepAlive.toValue = @0.999;
+        keepAlive.duration = 0.5;
+        keepAlive.autoreverses = YES;
+        keepAlive.repeatCount = HUGE_VALF;
+        keepAlive.removedOnCompletion = NO;
+        [self.layer addAnimation:keepAlive forKey:@"hudKeepAlive"];
+    }
 }
 
 - (NSTextAlignment)alignmentForIndex:(NSInteger)idx {
@@ -121,6 +141,12 @@
         case 2:  return NSTextAlignmentRight;
         default: return NSTextAlignmentCenter;
     }
+}
+
+- (void)layoutLabel {
+    _label.frame = CGRectMake(kTextHPadding, 0,
+                              MAX(0, self.bounds.size.width - kTextHPadding * 2),
+                              self.bounds.size.height);
 }
 
 #pragma mark - Dragging
@@ -168,42 +194,54 @@ static NSString *FormattedSpeed(double kbps) {
     return [NSString stringWithFormat:@"%.0f KB/s", kbps];
 }
 
+// Tags are padded to a common width so the colons (and values) line up in
+// the monospaced font: "FPS:  120" / "TEMP: 33.5°C".
+static NSString *PaddedTag(NSString *tag) {
+    while (tag.length < 4) tag = [tag stringByAppendingString:@" "];
+    return tag;
+}
+
 - (void)refreshText {
     HUDMetrics *m = [HUDMetrics sharedMetrics];
     HUDPreferences *prefs = [HUDPreferences sharedPreferences];
 
     NSMutableArray<NSString *> *lines = [NSMutableArray array];
     if (prefs.showFPS) {
-        [lines addObject:[NSString stringWithFormat:@"FPS  %.0f", m.fps]];
+        [lines addObject:[NSString stringWithFormat:@"%@:  %.0f", PaddedTag(@"FPS"), m.fps]];
     }
     if (prefs.showCPU) {
-        [lines addObject:[NSString stringWithFormat:@"CPU  %.0f%%", m.cpuPercent]];
+        [lines addObject:[NSString stringWithFormat:@"%@:  %.0f%%", PaddedTag(@"CPU"), m.cpuPercent]];
     }
     if (prefs.showMemory) {
-        [lines addObject:[NSString stringWithFormat:@"MEM  %@", FormattedMemory(m.memoryMB)]];
+        if (prefs.showMemoryPercent && m.memoryTotalMB > 0) {
+            double pct = MIN(100.0, m.memoryMB / m.memoryTotalMB * 100.0);
+            [lines addObject:[NSString stringWithFormat:@"%@:  %@ (%.0f%%)", PaddedTag(@"MEM"), FormattedMemory(m.memoryMB), pct]];
+        } else {
+            [lines addObject:[NSString stringWithFormat:@"%@:  %@", PaddedTag(@"MEM"), FormattedMemory(m.memoryMB)]];
+        }
     }
     if (prefs.showTemperature) {
         if (m.temperatureC >= 0) {
-            [lines addObject:[NSString stringWithFormat:@"TEMP %.1f°C", m.temperatureC]];
+            [lines addObject:[NSString stringWithFormat:@"%@:  %.1f°C", PaddedTag(@"TEMP"), m.temperatureC]];
         } else {
-            [lines addObject:@"TEMP N/A"];
+            [lines addObject:[NSString stringWithFormat:@"%@:  N/A", PaddedTag(@"TEMP")]];
         }
     }
     if (prefs.showPower) {
         if (m.powerWatts >= 0) {
-            [lines addObject:[NSString stringWithFormat:@"PWR  %.2f W", m.powerWatts]];
+            [lines addObject:[NSString stringWithFormat:@"%@:  %.2f W", PaddedTag(@"PWR"), m.powerWatts]];
         } else {
-            [lines addObject:@"PWR  N/A"];
+            [lines addObject:[NSString stringWithFormat:@"%@:  N/A", PaddedTag(@"PWR")]];
         }
     }
     if (prefs.showNetwork) {
-        [lines addObject:[NSString stringWithFormat:@"NET  ↓%@ ↑%@", FormattedSpeed(m.netDownKBps), FormattedSpeed(m.netUpKBps)]];
+        [lines addObject:[NSString stringWithFormat:@"%@:  ↓%@ ↑%@", PaddedTag(@"NET"), FormattedSpeed(m.netDownKBps), FormattedSpeed(m.netUpKBps)]];
     }
     if (prefs.showBattery) {
         if (m.batteryPercent >= 0) {
-            [lines addObject:[NSString stringWithFormat:@"BAT  %.0f%%", m.batteryPercent]];
+            [lines addObject:[NSString stringWithFormat:@"%@:  %.0f%%", PaddedTag(@"BAT"), m.batteryPercent]];
         } else {
-            [lines addObject:@"BAT  N/A"];
+            [lines addObject:[NSString stringWithFormat:@"%@:  N/A", PaddedTag(@"BAT")]];
         }
     }
 
@@ -220,7 +258,7 @@ static NSString *FormattedSpeed(double kbps) {
 - (void)updateAutoHeight {
     if (![HUDPreferences sharedPreferences].autoHeight) return;
 
-    CGSize fit = [_label sizeThatFits:CGSizeMake(self.bounds.size.width, CGFLOAT_MAX)];
+    CGSize fit = [_label sizeThatFits:CGSizeMake(MAX(0, self.bounds.size.width - kTextHPadding * 2), CGFLOAT_MAX)];
     CGFloat needed = MAX(fit.height, _label.font.lineHeight);
 
     // Never grow past the bottom of the screen.
@@ -232,7 +270,7 @@ static NSString *FormattedSpeed(double kbps) {
         f.size.height = needed;
         self.frame = f;
     }
-    _label.frame = self.bounds;
+    [self layoutLabel];
 }
 
 #pragma mark - Helpers

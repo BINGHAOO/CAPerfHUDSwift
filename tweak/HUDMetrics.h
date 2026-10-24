@@ -12,6 +12,7 @@
 // Latest values (updated ~ every second).
 @property (nonatomic, readonly) double fps;
 @property (nonatomic, readonly) double memoryMB;
+@property (nonatomic, readonly) double memoryTotalMB;
 @property (nonatomic, readonly) double cpuPercent;
 
 // Device-wide battery/power metrics (°C, W, KB/s, 0-100; negative = unknown).

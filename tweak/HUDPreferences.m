@@ -251,6 +251,11 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     return val ? [val integerValue] : 1;
 }
 
+- (BOOL)showMemoryPercent {
+    id val = [self objectForKey:@"showMemoryPercent"];
+    return val ? [val boolValue] : YES;
+}
+
 - (BOOL)autoHeight {
     id val = [self objectForKey:@"autoHeight"];
     return val ? [val boolValue] : YES;
