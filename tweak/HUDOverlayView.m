@@ -90,10 +90,11 @@ static const CGFloat kTextHPadding = 8.0;
         [[HUDMetrics sharedMetrics] stop];
     }
 
-    // Resize. With auto-fit height the panel height is driven by the text
-    // (see updateAutoHeight), so only the width is taken from preferences.
+    // Resize. With auto-fit enabled the panel size is driven by the text
+    // (see updateAutoSize), so the preference size is applied as the
+    // starting/minimum frame only.
     CGRect frame = self.frame;
-    frame.size.width = prefs.windowWidth;
+    if (self.frame.size.width < prefs.windowWidth) frame.size.width = prefs.windowWidth;
     if (!prefs.autoHeight) frame.size.height = prefs.windowHeight;
     self.frame = frame;
     [self layoutLabel];
@@ -113,8 +114,10 @@ static const CGFloat kTextHPadding = 8.0;
         self.layer.borderWidth = 0;
     }
 
-    // Text
-    _label.font = [UIFont monospacedDigitSystemFontOfSize:prefs.fontSize weight:UIFontWeightMedium];
+    // Text. A fully monospaced font (SF Mono) is required for the padded
+    // tags to line up: monospacedDigitSystemFont only fixes digits, so the
+    // colons of "FPS:" and "TEMP:" ended up at different x positions.
+    _label.font = [UIFont monospacedSystemFontOfSize:prefs.fontSize weight:UIFontWeightMedium];
     _label.textColor = [self colorFromHex:prefs.textColorHex];
     _label.textAlignment = [self alignmentForIndex:prefs.textAlignment];
 
@@ -250,14 +253,36 @@ static NSString *PaddedTag(NSString *tag) {
     }
     _label.text = [lines componentsJoinedByString:@"\n"];
 
-    [self updateAutoHeight];
+    [self updateAutoSize];
 }
 
-// Grows (or shrinks) the panel so every selected metric line is visible.
-// The top edge stays anchored where the user dragged it.
-- (void)updateAutoHeight {
-    if (![HUDPreferences sharedPreferences].autoHeight) return;
+// Auto-fit size: grows the panel so nothing ever wraps. The width follows
+// the longest line (network speeds can be very long), the height follows
+// the line count. The top-left corner stays anchored where the user dragged
+// it, and the user-set width acts as the minimum so small panels stay small.
+- (void)updateAutoSize {
+    HUDPreferences *prefs = [HUDPreferences sharedPreferences];
+    if (!prefs.autoHeight) return;
 
+    NSDictionary *attrs = @{NSFontAttributeName: _label.font};
+    CGFloat textW = 0;
+    for (NSString *line in [_label.text componentsSeparatedByString:@"\n"]) {
+        CGFloat w = ceil([line sizeWithAttributes:attrs].width);
+        if (w > textW) textW = w;
+    }
+
+    // Width: user-set minimum, grown to fit the longest line.
+    CGFloat width = MAX(prefs.windowWidth, textW + kTextHPadding * 2);
+    CGFloat maxW = [UIScreen mainScreen].bounds.size.width - self.frame.origin.x - 8;
+    width = MIN(width, MAX(maxW, prefs.windowWidth));
+    if (fabs(self.frame.size.width - width) > 0.5) {
+        CGRect f = self.frame;
+        f.size.width = width;
+        self.frame = f;
+    }
+    [self layoutLabel];
+
+    // Height: fit every line.
     CGSize fit = [_label sizeThatFits:CGSizeMake(MAX(0, self.bounds.size.width - kTextHPadding * 2), CGFLOAT_MAX)];
     CGFloat needed = MAX(fit.height, _label.font.lineHeight);
 

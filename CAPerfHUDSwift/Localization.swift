@@ -257,7 +257,7 @@ extension L10n {
         case .alignLeft: return "Left"
         case .alignCenter: return "Center"
         case .alignRight: return "Right"
-        case .autoHeight: return "Auto-fit Height"
+        case .autoHeight: return "Auto-fit Size"
 
         // About
         case .appName: return "CAPerfHUDSwift"
@@ -380,7 +380,7 @@ extension L10n {
         case .alignLeft: return "居左"
         case .alignCenter: return "居中"
         case .alignRight: return "居右"
-        case .autoHeight: return "自适应高度"
+        case .autoHeight: return "自适应尺寸"
 
         // About
         case .appName: return "CAPerfHUDSwift"

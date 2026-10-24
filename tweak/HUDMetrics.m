@@ -21,12 +21,53 @@ typedef io_service_t_c (*IOServiceGetMatchingServiceFn)(mach_port_t masterPort, 
 typedef kern_return_t (*IORegistryEntryCreateCFPropertiesFn)(uint32_t entry, CFMutableDictionaryRef *properties, CFAllocatorRef allocator, UInt32 options);
 typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
 
+static IOServiceMatchingFn gServiceMatching = NULL;
+static IOServiceGetMatchingServiceFn gGetService = NULL;
+static IORegistryEntryCreateCFPropertiesFn gCreateProps = NULL;
+static IOObjectReleaseFn gObjectRelease = NULL;
+
+static void EnsureIOKitSymbols(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        void *handle = dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_LAZY);
+        if (!handle) return;
+        gServiceMatching = (IOServiceMatchingFn)dlsym(handle, "IOServiceMatching");
+        gGetService = (IOServiceGetMatchingServiceFn)dlsym(handle, "IOServiceGetMatchingService");
+        gCreateProps = (IORegistryEntryCreateCFPropertiesFn)dlsym(handle, "IORegistryEntryCreateCFProperties");
+        gObjectRelease = (IOObjectReleaseFn)dlsym(handle, "IOObjectRelease");
+    });
+}
+
+// Fills outProps with the property table of the first IORegistry node of the
+// given class. Returns NO when the class is absent or IOKit is unavailable.
+// On YES the caller must CFRelease(*outProps) and gObjectRelease(*outService).
+static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *outProps, io_service_t_c *outService) {
+    if (!gServiceMatching || !gGetService || !gCreateProps || !gObjectRelease) return NO;
+    CFMutableDictionaryRef matching = gServiceMatching(cls.UTF8String);
+    if (!matching) return NO;
+    // IOServiceGetMatchingService consumes one reference to matching.
+    io_service_t_c service = gGetService(0, matching); // 0 = kIOMasterPortDefault
+    if (!service) return NO;
+
+    CFMutableDictionaryRef props = NULL;
+    if (gCreateProps(service, &props, kCFAllocatorDefault, 0) != KERN_SUCCESS || !props) {
+        gObjectRelease(service);
+        return NO;
+    }
+    *outProps = props;
+    *outService = service;
+    return YES;
+}
+
 @interface HUDMetrics ()
 @property (nonatomic, strong) CADisplayLink *displayLink;
 @property (nonatomic, strong) NSTimer *systemTimer;
 @property (nonatomic) NSTimeInterval lastTimestamp;
 @property (nonatomic) NSInteger frameCount;
 @property (nonatomic) double fps;
+@property (nonatomic) double measuredFPS;    // CADisplayLink count (clamped to 60 in SpringBoard)
+@property (nonatomic) double panelRefreshRate; // real panel Hz from the display driver
+@property (nonatomic) BOOL hasPanelRefreshRate;
 @property (nonatomic) double memoryMB;
 @property (nonatomic) double memoryTotalMB;
 @property (nonatomic) double cpuPercent;
@@ -128,6 +169,10 @@ typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
 }
 
 - (void)sampleSystemMetrics {
+    // Panel refresh rate first: on success it overrides the display-link
+    // measurement for the FPS readout (see samplePanelRefreshRate).
+    [self samplePanelRefreshRate];
+
     // Memory – global used RAM of the whole device, not this process:
     // wired + active + compressor pages (the standard "used" approximation).
     mach_msg_type_number_t vmCount = HOST_VM_INFO64_COUNT;
@@ -179,6 +224,14 @@ typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
 
     [self samplePowerSource];
     [self sampleNetwork];
+
+    // CADisplayLink inside SpringBoard is pinned to the 60 Hz UI vsync no
+    // matter what the panel does. When the display driver reports the real
+    // panel rate, that is the honest FPS value.
+    if (self.hasPanelRefreshRate) {
+        self.measuredFPS = self.fps;
+        self.fps = self.panelRefreshRate;
+    }
 }
 
 #pragma mark - Battery / temperature / power (IORegistry)
@@ -232,41 +285,19 @@ typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
 }
 
 - (void)samplePowerSource {
-    static IOServiceMatchingFn serviceMatching = NULL;
-    static IOServiceGetMatchingServiceFn getService = NULL;
-    static IORegistryEntryCreateCFPropertiesFn createProps = NULL;
-    static IOObjectReleaseFn objectRelease = NULL;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        void *handle = dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_LAZY);
-        if (!handle) return;
-        serviceMatching = (IOServiceMatchingFn)dlsym(handle, "IOServiceMatching");
-        getService = (IOServiceGetMatchingServiceFn)dlsym(handle, "IOServiceGetMatchingService");
-        createProps = (IORegistryEntryCreateCFPropertiesFn)dlsym(handle, "IORegistryEntryCreateCFProperties");
-        objectRelease = (IOObjectReleaseFn)dlsym(handle, "IOObjectRelease");
-    });
+    EnsureIOKitSymbols();
 
-    if (serviceMatching && getService && createProps && objectRelease) {
-        // AppleSmartBattery carries the richest table; the generic
-        // IOPMPowerSource node is the fallback with the same keys.
-        for (NSString *cls in @[@"AppleSmartBattery", @"IOPMPowerSource"]) {
-            CFMutableDictionaryRef matching = serviceMatching(cls.UTF8String);
-            if (!matching) continue;
-            // IOServiceGetMatchingService consumes one reference to matching.
-            // kIOMasterPortDefault is 0 (master port).
-            io_service_t_c service = getService(0, matching);
-            if (!service) continue;
+    // AppleSmartBattery carries the richest table; the generic
+    // IOPMPowerSource node is the fallback with the same keys.
+    for (NSString *cls in @[@"AppleSmartBattery", @"IOPMPowerSource"]) {
+        CFMutableDictionaryRef props = NULL;
+        io_service_t_c service = 0;
+        if (!CopyFirstServiceProperties(cls, &props, &service)) continue;
 
-            CFMutableDictionaryRef props = NULL;
-            if (createProps(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS && props) {
-                BOOL got = [self consumeBatteryProperties:props];
-                CFRelease(props);
-                objectRelease(service);
-                if (got) return;
-            } else {
-                objectRelease(service);
-            }
-        }
+        BOOL got = [self consumeBatteryProperties:props];
+        CFRelease(props);
+        gObjectRelease(service);
+        if (got) return;
     }
 
     // Fallback for the battery level only: UIDevice works in every process.
@@ -276,6 +307,54 @@ typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
         double level = device.batteryLevel; // 0.0 – 1.0, -1 when unavailable
         if (level >= 0) self.batteryPercent = level * 100.0;
     }
+}
+
+#pragma mark - Panel refresh rate (real value from the display driver)
+
+// The honest source for the FPS row. CADisplayLink inside SpringBoard is
+// pinned to the 60 Hz UI vsync regardless of what the panel does, so we read
+// the refresh rate straight from the display driver's IORegistry node
+// (AppleDisplay). On ProMotion devices this tracks the panel live: LTPO
+// downshifts when idle, ~120 while scrolling.
+- (void)samplePanelRefreshRate {
+    EnsureIOKitSymbols();
+
+    for (NSString *cls in @[@"AppleDisplay", @"IOMobileFramebufferShim"]) {
+        CFMutableDictionaryRef props = NULL;
+        io_service_t_c service = 0;
+        if (!CopyFirstServiceProperties(cls, &props, &service)) continue;
+
+        BOOL found = NO;
+        CFIndex count = CFDictionaryGetCount(props);
+        if (count > 0) {
+            const void **keys = malloc(sizeof(void *) * count);
+            const void **values = malloc(sizeof(void *) * count);
+            // CFDictionaryGetKeysAndValues fills both arrays (void return).
+            CFDictionaryGetKeysAndValues(props, keys, values);
+            for (CFIndex i = 0; i < count; i++) {
+                if (CFGetTypeID(keys[i]) != CFStringGetTypeID()) continue;
+                NSString *key = (__bridge NSString *)keys[i];
+                if (![key.lowercaseString containsString:@"refresh"]) continue;
+                if (CFGetTypeID(values[i]) != CFNumberGetTypeID()) continue;
+
+                double hz = 0;
+                if (CFNumberGetValue((__bridge CFNumberRef)values[i], kCFNumberDoubleType, &hz) &&
+                    hz >= 1.0 && hz <= 240.0) {
+                    self.panelRefreshRate = hz;
+                    self.hasPanelRefreshRate = YES;
+                    found = YES;
+                    break;
+                }
+            }
+            free(keys);
+            free(values);
+        }
+        CFRelease(props);
+        gObjectRelease(service);
+        if (found) return;
+    }
+
+    self.hasPanelRefreshRate = NO;
 }
 
 #pragma mark - Network throughput (all interfaces, loopback excluded)
