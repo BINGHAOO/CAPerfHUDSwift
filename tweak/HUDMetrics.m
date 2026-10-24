@@ -129,21 +129,52 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
     return self;
 }
 
+// Dedicated thread for the FPS display link. In SpringBoard the main-runloop
+// CADisplayLink is pinned to the 60 Hz UI vsync track no matter what
+// preferredFrameRateRange requests (observed on iOS 15 ProMotion). A display
+// link scheduled on its own thread's runloop registers as an independent
+// vsync client and can track the panel rate – the standard approach used by
+// iOS FPS overlay tools.
+static NSThread *_fpsLoopThread = nil;
+
+- (void)ensureFPSLoopThread {
+    if (_fpsLoopThread && !_fpsLoopThread.finished) return;
+    _fpsLoopThread = [[NSThread alloc] initWithTarget:self selector:@selector(fpsThreadMain) object:nil];
+    _fpsLoopThread.name = @"CAPerfHUD-FPS";
+    [_fpsLoopThread start];
+}
+
+- (void)fpsThreadMain {
+    @autoreleasepool {
+        // Keep the runloop alive forever; the display link is scheduled here.
+        [[NSRunLoop currentRunLoop] addPort:[NSPort port] forMode:NSDefaultRunLoopMode];
+        [[NSRunLoop currentRunLoop] run];
+    }
+}
+
+- (void)createDisplayLinkOnThread {
+    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];
+    if (@available(iOS 15.0, *)) {
+        // Ask for 120 Hz unconditionally. On 60 Hz panels the system clamps
+        // the maximum automatically, so this is safe everywhere.
+        CAFrameRateRange range = CAFrameRateRangeMake(120.0f, 120.0f, 120.0f);
+        link.preferredFrameRateRange = range;
+    } else {
+        link.preferredFramesPerSecond = [UIScreen mainScreen].maximumFramesPerSecond;
+    }
+    [link addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+    self.displayLink = link;
+}
+
 - (void)start {
     if (self.displayLink) return;
 
-    self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];
-    if (@available(iOS 15.0, *)) {
-        // Ask for 120 Hz unconditionally. On 60 Hz panels the system clamps
-        // the maximum automatically, so this is safe everywhere; on
-        // ProMotion devices a lower minimum (e.g. 60) has been observed to
-        // make iOS 15 fall back to the 60 Hz vsync track.
-        CAFrameRateRange range = CAFrameRateRangeMake(120.0f, 120.0f, 120.0f);
-        self.displayLink.preferredFrameRateRange = range;
-    } else {
-        self.displayLink.preferredFramesPerSecond = [UIScreen mainScreen].maximumFramesPerSecond;
-    }
-    [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    [self ensureFPSLoopThread];
+    [self performSelector:@selector(createDisplayLinkOnThread)
+                  onThread:_fpsLoopThread
+                withObject:nil
+             waitUntilDone:NO
+                    modes:@[ NSDefaultRunLoopMode ]];
 
     // Sample CPU/memory/battery/network every second on a separate timer.
     self.systemTimer = [NSTimer timerWithTimeInterval:1.0 target:self selector:@selector(sampleSystemMetrics) userInfo:nil repeats:YES];
