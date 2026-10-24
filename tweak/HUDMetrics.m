@@ -253,7 +253,8 @@ typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
             CFMutableDictionaryRef matching = serviceMatching(cls.UTF8String);
             if (!matching) continue;
             // IOServiceGetMatchingService consumes one reference to matching.
-            io_service_t_c service = getService(kIOMasterPortDefault, matching);
+            // kIOMasterPortDefault is 0 (master port).
+            io_service_t_c service = getService(0, matching);
             if (!service) continue;
 
             CFMutableDictionaryRef props = NULL;
