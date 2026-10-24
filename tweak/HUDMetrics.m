@@ -338,7 +338,7 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
                 if (CFGetTypeID(values[i]) != CFNumberGetTypeID()) continue;
 
                 double hz = 0;
-                if (CFNumberGetValue((__bridge CFNumberRef)values[i], kCFNumberDoubleType, &hz) &&
+                if (CFNumberGetValue((CFNumberRef)values[i], kCFNumberDoubleType, &hz) &&
                     hz >= 1.0 && hz <= 240.0) {
                     self.panelRefreshRate = hz;
                     self.hasPanelRefreshRate = YES;
