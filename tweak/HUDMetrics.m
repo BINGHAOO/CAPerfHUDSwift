@@ -171,6 +171,7 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
     NSTimeInterval elapsed = link.timestamp - self.lastTimestamp;
     if (elapsed >= 1.0) {
         self.fps = self.frameCount / elapsed;
+        self.measuredFPS = self.fps;
         self.frameCount = 0;
         self.lastTimestamp = link.timestamp;
     }
@@ -237,7 +238,6 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
     // matter what the panel does. When the display driver reports the real
     // panel rate, that is the honest FPS value.
     if (self.hasPanelRefreshRate) {
-        self.measuredFPS = self.fps;
         self.fps = self.panelRefreshRate;
     }
 }
@@ -329,7 +329,9 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
     EnsureIOKitSymbols();
 
     NSMutableArray<NSString *> *summary = [NSMutableArray array];
-    double foundHz = -1;
+    double displayRefreshVal = -1; // "current panel rate" keys – highest trust
+    double otherVal = -1;          // any other plausible rate key
+    double limitVal = -1;          // limit/ceiling keys – last resort
 
     if (gServiceMatching && gGetMatchingServices && gIteratorNext && gCreateProps && gObjectRelease) {
         for (NSString *cls in @[@"AppleDisplay", @"IOMobileFramebuffer", @"IOMobileFramebufferShim"]) {
@@ -359,17 +361,69 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
                                                  [lower containsString:@"framerate"];
                             if (!looksLikeRate) continue;
 
+                            // IOMFB reports most of its state as packed
+                            // binary structs (CFData), e.g. the probed
+                            // "IOMFBDisplayRefresh" on iOS 15. A raw number
+                            // (CFNumber/CFString) is used directly; for a
+                            // blob the little-endian u32 words are scanned
+                            // against the known panel rate steps so that
+                            // struct lengths and flags never match. The hex
+                            // dump lands in the diagnostics either way.
+                            double parsed = -1;
                             if (CFGetTypeID(values[i]) == CFNumberGetTypeID()) {
                                 double hz = 0;
                                 if (CFNumberGetValue((CFNumberRef)values[i], kCFNumberDoubleType, &hz) &&
                                     hz >= 1.0 && hz <= 240.0) {
+                                    parsed = hz;
                                     [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=%.0f", cls, idx, key, hz]];
-                                    if (foundHz < 0) foundHz = hz;
                                 } else {
-                                    [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<out-of-range>", cls, idx, key]];
+                                    [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<number out of range>", cls, idx, key]];
                                 }
+                            } else if (CFGetTypeID(values[i]) == CFStringGetTypeID()) {
+                                NSString *s = (__bridge NSString *)values[i];
+                                double hz = s.doubleValue;
+                                if (hz >= 1.0 && hz <= 240.0) {
+                                    parsed = hz;
+                                    [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=%@ (%.0f Hz)", cls, idx, key, s, hz]];
+                                } else {
+                                    [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<string \"%@\">", cls, idx, key, s]];
+                                }
+                            } else if (CFGetTypeID(values[i]) == CFDataGetTypeID()) {
+                                CFDataRef data = (CFDataRef)values[i];
+                                const UInt8 *bytes = CFDataGetBytePtr(data);
+                                CFIndex len = CFDataGetLength(data);
+                                NSMutableString *desc = [NSMutableString stringWithFormat:@"data[%ld B:", (long)len];
+                                for (CFIndex b = 0; b < MIN((CFIndex)16, len); b++) {
+                                    [desc appendFormat:@" %02x", bytes[b]];
+                                }
+                                [desc appendString:@" ]"];
+                                for (CFIndex off = 0; off + 4 <= len && off < 32; off += 4) {
+                                    uint32_t v = (uint32_t)bytes[off] |
+                                                 ((uint32_t)bytes[off + 1] << 8) |
+                                                 ((uint32_t)bytes[off + 2] << 16) |
+                                                 ((uint32_t)bytes[off + 3] << 24);
+                                    if ([self isPlausiblePanelRate:v]) {
+                                        parsed = v;
+                                        [desc appendFormat:@" u32@%ld=%u", (long)off, v];
+                                        break;
+                                    }
+                                }
+                                [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=%@", cls, idx, key, desc]];
+                            } else if (CFGetTypeID(values[i]) == CFBooleanGetTypeID()) {
+                                Boolean bv = CFBooleanGetValue((CFBooleanRef)values[i]);
+                                [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=%@", cls, idx, key, bv ? @"true" : @"false"]];
                             } else {
-                                [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<non-number>", cls, idx, key]];
+                                [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<type %lu>", cls, idx, key, (unsigned long)CFGetTypeID(values[i])]];
+                            }
+
+                            if (parsed > 0) {
+                                if ([lower containsString:@"displayrefresh"]) {
+                                    if (displayRefreshVal < 0) displayRefreshVal = parsed;
+                                } else if ([lower containsString:@"limit"]) {
+                                    if (limitVal < 0) limitVal = parsed;
+                                } else if (otherVal < 0) {
+                                    otherVal = parsed;
+                                }
                             }
                         }
                         free(keys);
@@ -389,12 +443,24 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
     }
     self.panelScanSummary = [summary componentsJoinedByString:@"; "];
 
+    double foundHz = displayRefreshVal > 0 ? displayRefreshVal : (otherVal > 0 ? otherVal : limitVal);
     if (foundHz > 0) {
         self.panelRefreshRate = foundHz;
         self.hasPanelRefreshRate = YES;
     } else {
         self.hasPanelRefreshRate = NO;
     }
+}
+
+// Only accepts values at the panel rate steps real iOS hardware uses, so a
+// packed IOMFB struct's length/flag words (8, 16, 32, ...) never pass as a
+// refresh rate.
+- (BOOL)isPlausiblePanelRate:(uint32_t)v {
+    static const uint32_t steps[] = {10, 24, 30, 40, 45, 48, 60, 80, 90, 120, 144, 165, 240};
+    for (size_t i = 0; i < sizeof(steps) / sizeof(steps[0]); i++) {
+        if (v + 1 >= steps[i] && v - 1 <= steps[i]) return YES;
+    }
+    return NO;
 }
 
 #pragma mark - Network throughput (all interfaces, loopback excluded)

@@ -454,7 +454,7 @@
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/swift",
 				);
-				MARKETING_VERSION = 1.8.5;
+				MARKETING_VERSION = 1.8.6;
 				PRODUCT_BUNDLE_IDENTIFIER = ca.bomberfish.CAPerfHudSwift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -492,7 +492,7 @@
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/swift",
 				);
-				MARKETING_VERSION = 1.8.5;
+				MARKETING_VERSION = 1.8.6;
 				PRODUCT_BUNDLE_IDENTIFIER = ca.bomberfish.CAPerfHudSwift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
