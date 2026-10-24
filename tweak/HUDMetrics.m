@@ -79,6 +79,7 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
 @property (nonatomic) BOOL hasPanelRefreshRate;
 @property (nonatomic, copy) NSString *panelScanSummary;
 @property (nonatomic) double backboarddFrameRate; // from the backboardd frame counter
+@property (nonatomic, copy) NSString *bbChannelState; // diagnostics: counter channel status
 @property (nonatomic) uint64_t lastBBFrameCount;
 @property (nonatomic) uint64_t lastBBFrameTs;
 @property (nonatomic) double memoryMB;
@@ -224,13 +225,20 @@ static NSThread *_fpsLoopThread = nil;
     int fd = open(kSharedPath, O_RDONLY);
     if (fd < 0) {
         self.backboarddFrameRate = -1;
+        self.bbChannelState = @"file missing (backboardd side not running)";
         return;
     }
     uint64_t buf[2] = {0, 0};
     BOOL ok = pread(fd, buf, sizeof(buf), 0) == sizeof(buf);
     close(fd);
-    if (!ok || buf[1] == 0) {
+    if (!ok) {
         self.backboarddFrameRate = -1;
+        self.bbChannelState = @"read failed";
+        return;
+    }
+    if (buf[1] == 0) {
+        self.backboarddFrameRate = -1;
+        self.bbChannelState = @"file empty (counter never flushed)";
         return;
     }
 
@@ -239,10 +247,19 @@ static NSThread *_fpsLoopThread = nil;
     if (self.lastBBFrameTs > 0 && sec > self.lastBBFrameTs) {
         double dt = (double)(sec - self.lastBBFrameTs);
         double hz = (double)(count - self.lastBBFrameCount) / dt;
-        self.backboarddFrameRate = (hz >= 1.0 && hz <= 240.0) ? hz : -1;
-    } else {
-        // First sample or the counter is stale (counter side missing).
+        if (hz >= 1.0 && hz <= 240.0) {
+            self.backboarddFrameRate = hz;
+            self.bbChannelState = [NSString stringWithFormat:@"%.1f Hz", hz];
+        } else {
+            self.backboarddFrameRate = -1;
+            self.bbChannelState = [NSString stringWithFormat:@"implausible delta (%.1f Hz)", hz];
+        }
+    } else if (self.lastBBFrameTs == 0) {
         self.backboarddFrameRate = -1;
+        self.bbChannelState = @"first sample";
+    } else {
+        self.backboarddFrameRate = -1;
+        self.bbChannelState = @"stale (counter not ticking)";
     }
     self.lastBBFrameCount = count;
     self.lastBBFrameTs = sec;
@@ -254,7 +271,7 @@ static NSThread *_fpsLoopThread = nil;
     [self samplePanelRefreshRate];
 
     // The backboardd frame counter beats every other source: the delta of
-    // render-server commits over one second IS the frame rate the panel
+    // render-server vsync ticks over one second IS the frame rate the panel
     // actually displayed (ProMotion 120 while scrolling, LTPO downshifts
     // when idle). IORegistry and CADisplayLink are only fallbacks.
     [self sampleBackboarddFrames];
@@ -262,6 +279,8 @@ static NSThread *_fpsLoopThread = nil;
         self.panelRefreshRate = self.backboarddFrameRate;
         self.hasPanelRefreshRate = YES;
         self.panelScanSummary = [NSString stringWithFormat:@"backboardd frame counter: %.1f Hz", self.backboarddFrameRate];
+    } else if (self.bbChannelState) {
+        self.panelScanSummary = [NSString stringWithFormat:@"%@; bb-counter: %@", self.panelScanSummary ?: @"", self.bbChannelState];
     }
 
     // Memory – global used RAM of the whole device, not this process:
