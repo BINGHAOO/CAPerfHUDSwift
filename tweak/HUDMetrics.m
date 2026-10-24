@@ -325,6 +325,45 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
 // instances of every display-related class are scanned for a refresh/hz
 // property; whatever is found is also recorded in panelScanSummary so the
 // diagnostics page can show exactly what the driver exposes on this device.
+// Parse the live panel refresh rate out of an IOMFB CFType description.
+// "IOMFBDisplayRefresh" is a private CFType whose CFCopyDescription output is
+// a plist-style dict of interval fields (probed on iOS 15: values like
+// "displayMinRefreshIntervalMachTime = 200016" == 8.33ms == 120Hz at the
+// 24MHz mach timebase). Only *current*-value keys are considered here; the
+// min/max bound keys are deliberately excluded so the allowed range is never
+// mistaken for the live rate.
+- (double)panelRateFromDescriptionText:(NSString *)text machTickNs:(double)machTickNs {
+    if (text.length == 0 || text.length > 4096) return -1;
+    NSArray<NSString *> *keys = @[
+        @"displayRefreshIntervalMachTime",
+        @"displayCurrentRefreshIntervalMachTime",
+        @"displayActiveRefreshIntervalMachTime",
+        @"displayRefreshInterval",
+        @"displayCurrentRefreshInterval",
+        @"displayActiveRefreshInterval",
+        @"displayRefreshRate",
+        @"displayCurrentRefreshRate",
+    ];
+    for (NSString *key in keys) {
+        NSString *pattern = [NSString stringWithFormat:@"%@\\s*=\\s*([0-9]+(?:\\.[0-9]+)?)\\b", key];
+        NSRegularExpression *re = [NSRegularExpression regularExpressionWithPattern:pattern options:0 error:NULL];
+        NSTextCheckingResult *m = [re firstMatchInString:text options:0 range:NSMakeRange(0, text.length)];
+        if (!m || [m rangeAtIndex:1].location == NSNotFound) continue;
+        double v = [[text substringWithRange:[m rangeAtIndex:1]] doubleValue];
+        if (v <= 0) continue;
+        if ([key containsString:@"Rate"]) return v; // direct Hz value
+        // Interval: two plausible units – mach ticks or nanoseconds. Accept
+        // whichever interpretation lands on a real panel rate step.
+        if (machTickNs > 0) {
+            double hz = 1e9 / (v * machTickNs);
+            if (fabs(hz - round(hz)) < 0.15 && [self isPlausiblePanelRate:(uint32_t)round(hz)]) return hz;
+        }
+        double hzNs = 1e9 / v;
+        if (fabs(hzNs - round(hzNs)) < 0.15 && [self isPlausiblePanelRate:(uint32_t)round(hzNs)]) return hzNs;
+    }
+    return -1;
+}
+
 - (void)samplePanelRefreshRate {
     EnsureIOKitSymbols();
 
@@ -347,6 +386,9 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
     }
 
     NSMutableArray<NSString *> *summary = [NSMutableArray array];
+    mach_timebase_info_data_t tbi = {1, 1};
+    mach_timebase_info(&tbi);
+    double machTickNs = (double)tbi.numer / (double)tbi.denom;
     double displayRefreshVal = -1; // "current panel rate" keys – highest trust
     double otherVal = -1;          // any other plausible rate key
     double limitVal = -1;          // limit/ceiling keys – last resort
@@ -433,18 +475,28 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
                             } else {
                                 // Unknown/private CFType (IOMFB uses custom
                                 // types – probed "IOMFBDisplayRefresh" shows
-                                // up as a bare typeID). CFCopyDescription
-                                // works on every CFType and usually reveals
-                                // the actual content (URLs, strings, custom
-                                // object dumps), which is the fastest way to
-                                // identify what the driver is really holding.
+                                // up as a bare typeID whose description is a
+                                // plist-style dict of interval fields). Dump
+                                // the description and parse the live refresh
+                                // interval straight out of it.
                                 CFStringRef desc = CFCopyDescription(values[i]);
-                                NSString *s = desc ? (__bridge_transfer NSString *)desc : @"<null>";
+                                NSString *s = desc ? (__bridge_transfer NSString *)desc : @"";
+                                if (desc) CFRelease(desc);
                                 s = [s stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
-                                if (s.length > 200) {
-                                    s = [[s substringToIndex:200] stringByAppendingString:@"..."];
+                                double parsedRate = [self panelRateFromDescriptionText:s machTickNs:machTickNs];
+                                if (s.length > 900) {
+                                    s = [[s substringToIndex:900] stringByAppendingString:@"..."];
                                 }
-                                [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<type %lu> %@", cls, idx, key, (unsigned long)CFGetTypeID(values[i]), s]];
+                                if (parsedRate > 0) {
+                                    [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<type %lu> %@ (parsed %.1f Hz)", cls, idx, key, (unsigned long)CFGetTypeID(values[i]), s, parsedRate]];
+                                    if ([lower containsString:@"displayrefresh"]) {
+                                        if (displayRefreshVal < 0) displayRefreshVal = parsedRate;
+                                    } else if (otherVal < 0) {
+                                        otherVal = parsedRate;
+                                    }
+                                } else {
+                                    [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<type %lu> %@", cls, idx, key, (unsigned long)CFGetTypeID(values[i]), s]];
+                                }
                             }
 
                             if (parsed > 0) {
