@@ -183,33 +183,36 @@ struct DiagnosticsView: View {
 
         out.append("")
         out.append("== Write test ==")
-        let testDict: [String: Any] = [
-            "enabled": HudSettings.shared.useCustomOverlay,
-            "windowWidth": HudSettings.shared.windowWidth,
-            "windowHeight": HudSettings.shared.windowHeight,
-            "fontSize": HudSettings.shared.fontSize,
-            "backgroundOpacity": HudSettings.shared.backgroundOpacity,
-            "cornerRadius": HudSettings.shared.cornerRadius,
-            "textColorHex": HudSettings.shared.textColorHex,
-            "bgColorHex": HudSettings.shared.bgColorHex,
-            "showBorder": HudSettings.shared.showBorder,
-            "borderWidth": HudSettings.shared.borderWidth
-        ]
-        let data = try? PropertyListSerialization.data(fromPropertyList: testDict, format: .xml, options: 0)
+        // Probe into a throwaway file instead of the live prefs plist: the
+        // write test used to overwrite com.binghaoo.caperfhud.plist with a
+        // partial dict (metric switches missing), which reset the overlay to
+        // FPS/CPU/MEM on every "send settings" tap.
+        let probeData: Data? = try? PropertyListSerialization.data(
+            fromPropertyList: ["probe": Int(Date().timeIntervalSince1970)],
+            format: .xml, options: 0)
 
-        do {
-            try data?.write(to: URL(fileURLWithPath: primary))
-            out.append("primary: OK")
-        } catch {
-            out.append("primary: FAIL (\(error.localizedDescription))")
-        }
-        if let jbroot = jbroot {
+        if let probeData = probeData {
+            let primaryProbe = primary.replacingOccurrences(of: ".plist", with: ".probe.plist", options: [.backwards])
             do {
-                try data?.write(to: URL(fileURLWithPath: jbroot))
-                out.append("jbroot: OK")
+                try probeData.write(to: URL(fileURLWithPath: primaryProbe))
+                out.append("primary dir: OK")
             } catch {
-                out.append("jbroot: FAIL (\(error.localizedDescription))")
+                out.append("primary dir: FAIL (\(error.localizedDescription))")
             }
+            try? fm.removeItem(atPath: primaryProbe)
+
+            if let jbroot = jbroot {
+                let jbrootProbe = jbroot.replacingOccurrences(of: ".plist", with: ".probe.plist", options: [.backwards])
+                do {
+                    try probeData.write(to: URL(fileURLWithPath: jbrootProbe))
+                    out.append("jbroot dir: OK")
+                } catch {
+                    out.append("jbroot dir: FAIL (\(error.localizedDescription))")
+                }
+                try? fm.removeItem(atPath: jbrootProbe)
+            }
+        } else {
+            out.append("plist serialization: FAIL")
         }
         // Defaults suite round-trip – the guaranteed channel even when the
         // app is sandboxed.
@@ -250,7 +253,7 @@ struct DiagnosticsView: View {
 
         if let diag = diag {
             out.append("read from: \(diagSource)")
-            for key in ["lastReload", "reloadCount", "notifyCount", "prefsFound", "prefsKeyCount", "enabled", "usedPath", "candidateCount", "windowWidth", "windowHeight", "fontSize", "primaryExists", "jbrootExists", "jbrootPrefsPath"] {
+            for key in ["lastReload", "reloadCount", "notifyCount", "prefsFound", "prefsKeyCount", "enabled", "usedPath", "candidateCount", "windowWidth", "windowHeight", "fontSize", "primaryExists", "jbrootExists", "jbrootPrefsPath", "fpsDisplayed", "fpsDisplayLink", "fpsSource", "fpsPanelHz", "fpsPanelScan"] {
                 if let v = diag[key] {
                     out.append("\(key): \(v)")
                 }
