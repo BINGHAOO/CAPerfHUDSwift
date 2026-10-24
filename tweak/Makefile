@@ -12,13 +12,13 @@ ARCHS = arm64 arm64e
 endif
 TARGET = iphone:clang:latest:15.0
 
-INSTALL_TARGET_PROCESSES = SpringBoard
+INSTALL_TARGET_PROCESSES = SpringBoard backboardd
 
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = CAPerfHUDOverlay
 
-CAPerfHUDOverlay_FILES = Tweak.xm HUDOverlayWindow.m HUDOverlayView.m HUDPreferences.m HUDMetrics.m
+CAPerfHUDOverlay_FILES = Tweak.xm HUDOverlayWindow.m HUDOverlayView.m HUDPreferences.m HUDMetrics.m HUDFrameCounter.m
 CAPerfHUDOverlay_CFLAGS = -fobjc-arc
 CAPerfHUDOverlay_FRAMEWORKS = UIKit QuartzCore
 

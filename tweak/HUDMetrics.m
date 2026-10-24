@@ -6,6 +6,8 @@
 #import <mach/mach_host.h>
 #import <sys/sysctl.h>
 #import <dlfcn.h>
+#import <fcntl.h>
+#import <unistd.h>
 #import <ifaddrs.h>
 #import <net/if.h>
 #import <string.h>
@@ -76,6 +78,9 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
 @property (nonatomic) double panelRefreshRate; // real panel Hz from the display driver
 @property (nonatomic) BOOL hasPanelRefreshRate;
 @property (nonatomic, copy) NSString *panelScanSummary;
+@property (nonatomic) double backboarddFrameRate; // from the backboardd frame counter
+@property (nonatomic) uint64_t lastBBFrameCount;
+@property (nonatomic) uint64_t lastBBFrameTs;
 @property (nonatomic) double memoryMB;
 @property (nonatomic) double memoryTotalMB;
 @property (nonatomic) double cpuPercent;
@@ -208,10 +213,56 @@ static NSThread *_fpsLoopThread = nil;
     }
 }
 
+#pragma mark - Backboardd frame counter (the real panel rate)
+
+// Reads the frame counter the tweak instance inside backboardd publishes
+// through a shared mmap file. The delta over one second is the frame rate
+// the panel actually displayed, straight from the render server.
+- (void)sampleBackboarddFrames {
+    static const char *kSharedPath = "/var/mobile/Library/Preferences/.caperfhud.framerate";
+
+    int fd = open(kSharedPath, O_RDONLY);
+    if (fd < 0) {
+        self.backboarddFrameRate = -1;
+        return;
+    }
+    uint64_t buf[2] = {0, 0};
+    BOOL ok = pread(fd, buf, sizeof(buf), 0) == sizeof(buf);
+    close(fd);
+    if (!ok || buf[1] == 0) {
+        self.backboarddFrameRate = -1;
+        return;
+    }
+
+    uint64_t count = buf[0];
+    uint64_t sec = buf[1];
+    if (self.lastBBFrameTs > 0 && sec > self.lastBBFrameTs) {
+        double dt = (double)(sec - self.lastBBFrameTs);
+        double hz = (double)(count - self.lastBBFrameCount) / dt;
+        self.backboarddFrameRate = (hz >= 1.0 && hz <= 240.0) ? hz : -1;
+    } else {
+        // First sample or the counter is stale (counter side missing).
+        self.backboarddFrameRate = -1;
+    }
+    self.lastBBFrameCount = count;
+    self.lastBBFrameTs = sec;
+}
+
 - (void)sampleSystemMetrics {
     // Panel refresh rate first: on success it overrides the display-link
     // measurement for the FPS readout (see samplePanelRefreshRate).
     [self samplePanelRefreshRate];
+
+    // The backboardd frame counter beats every other source: the delta of
+    // render-server commits over one second IS the frame rate the panel
+    // actually displayed (ProMotion 120 while scrolling, LTPO downshifts
+    // when idle). IORegistry and CADisplayLink are only fallbacks.
+    [self sampleBackboarddFrames];
+    if (self.backboarddFrameRate > 0) {
+        self.panelRefreshRate = self.backboarddFrameRate;
+        self.hasPanelRefreshRate = YES;
+        self.panelScanSummary = [NSString stringWithFormat:@"backboardd frame counter: %.1f Hz", self.backboarddFrameRate];
+    }
 
     // Memory – global used RAM of the whole device, not this process:
     // wired + active + compressor pages (the standard "used" approximation).

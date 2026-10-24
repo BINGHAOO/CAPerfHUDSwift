@@ -140,7 +140,7 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     HUDMetrics *m = [HUDMetrics sharedMetrics];
     diag[@"fpsDisplayed"] = @(m.fps);
     diag[@"fpsDisplayLink"] = @(m.measuredFPS);
-    diag[@"fpsSource"] = m.hasPanelRefreshRate ? @"IORegistry display driver" : @"CADisplayLink (fallback)";
+    diag[@"fpsSource"] = m.hasPanelRefreshRate ? @"panel frame rate source (see fpsPanelScan)" : @"CADisplayLink (fallback)";
     diag[@"fpsPanelHz"] = m.hasPanelRefreshRate ? @(m.panelRefreshRate) : @"unavailable";
     diag[@"fpsPanelScan"] = m.panelScanSummary ?: @"";
 
