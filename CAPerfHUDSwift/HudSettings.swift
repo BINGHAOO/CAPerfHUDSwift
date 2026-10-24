@@ -84,6 +84,15 @@ final class HudSettings: ObservableObject {
         didSet { UserDefaults.standard.set(showBattery, forKey: "HUDShowBattery"); scheduleSync() }
     }
 
+    // MARK: - Text Alignment & Auto Height (custom overlay)
+    /// 0 = left, 1 = center, 2 = right.
+    @Published var textAlignment: Int {
+        didSet { UserDefaults.standard.set(textAlignment, forKey: "HUDTextAlignment"); scheduleSync() }
+    }
+    @Published var autoHeight: Bool {
+        didSet { UserDefaults.standard.set(autoHeight, forKey: "HUDAutoHeight"); scheduleSync() }
+    }
+
     // MARK: - Behavior
     @Published var autoApplyOnLaunch: Bool {
         didSet { UserDefaults.standard.set(autoApplyOnLaunch, forKey: "HUDAutoApply") }
@@ -135,6 +144,9 @@ final class HudSettings: ObservableObject {
         self.showNetwork = defaults.object(forKey: "HUDShowNetwork") as? Bool ?? false
         self.showBattery = defaults.object(forKey: "HUDShowBattery") as? Bool ?? false
 
+        self.textAlignment = defaults.object(forKey: "HUDTextAlignment") as? Int ?? 1
+        self.autoHeight = defaults.object(forKey: "HUDAutoHeight") as? Bool ?? true
+
         self.autoApplyOnLaunch = defaults.object(forKey: "HUDAutoApply") as? Bool ?? true
         self.hapticFeedback = defaults.object(forKey: "HUDHaptic") as? Bool ?? true
     }
@@ -163,6 +175,8 @@ final class HudSettings: ObservableObject {
         showPower = false
         showNetwork = false
         showBattery = false
+        textAlignment = 1
+        autoHeight = true
         autoApplyOnLaunch = true
         hapticFeedback = true
         syncToSharedPrefs()
@@ -220,7 +234,9 @@ final class HudSettings: ObservableObject {
             "showTemperature": showTemperature,
             "showPower": showPower,
             "showNetwork": showNetwork,
-            "showBattery": showBattery
+            "showBattery": showBattery,
+            "textAlignment": textAlignment,
+            "autoHeight": autoHeight
         ]
 
         // 1. Defaults suite. This is the guaranteed channel: even when the

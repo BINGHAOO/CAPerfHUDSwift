@@ -11,11 +11,15 @@
 #import <string.h>
 #import <math.h>
 
-// IOKit power source functions are resolved at runtime with dlsym so the
-// tweak does not need to link IOKit at build time.
-typedef CFTypeRef (*IOPSCopyPowerSourcesInfoFn)(void);
-typedef CFArrayRef (*IOPSCopyPowerSourcesListFn)(CFTypeRef blob);
-typedef CFDictionaryRef (*IOPSGetPowerSourceDescriptionFn)(CFTypeRef blob, CFTypeRef source);
+// IOKit functions are resolved at runtime with dlsym so the tweak does not
+// need to link IOKit at build time. Battery data comes from the IORegistry
+// (AppleSmartBattery / IOPMPowerSource), the classic and most reliable
+// source on jailbroken iOS.
+typedef uint32_t io_service_t_c;
+typedef CFMutableDictionaryRef (*IOServiceMatchingFn)(const char *name);
+typedef io_service_t_c (*IOServiceGetMatchingServiceFn)(mach_port_t masterPort, CFDictionaryRef matching);
+typedef kern_return_t (*IORegistryEntryCreateCFPropertiesFn)(uint32_t entry, CFMutableDictionaryRef *properties, CFAllocatorRef allocator, UInt32 options);
+typedef kern_return_t (*IOObjectReleaseFn)(uint32_t object);
 
 @interface HUDMetrics ()
 @property (nonatomic, strong) CADisplayLink *displayLink;
@@ -79,12 +83,14 @@ typedef CFDictionaryRef (*IOPSGetPowerSourceDescriptionFn)(CFTypeRef blob, CFTyp
     self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];
     CGFloat maxFPS = [UIScreen mainScreen].maximumFramesPerSecond;
     if (@available(iOS 15.0, *)) {
-        // On iOS 15+ ProMotion devices, setting preferredFramesPerSecond alone
-        // does NOT unlock the 120 Hz panel – CADisplayLink stays pinned at
-        // 60 Hz unless an explicit frame rate range is requested. The minimum
-        // stays low so the link keeps following the LTPO panel when it
-        // downshifts on static content.
-        CAFrameRateRange range = CAFrameRateRangeMake(1, maxFPS, maxFPS);
+        // On iOS 15+ ProMotion devices an explicit frame rate range is
+        // required to unlock the 120 Hz panel. IMPORTANT: the minimum must
+        // not be tiny – a floor of 1 makes the scheduler keep the link
+        // pinned at 60 Hz (the classic "FPS always 60" symptom). A floor of
+        // half the maximum (60 on ProMotion) reliably unlocks 120 Hz, and
+        // the readout still varies live with content (60 idle / 120 moving).
+        float minimum = maxFPS >= 90 ? maxFPS / 2.0f : 1.0f;
+        CAFrameRateRange range = CAFrameRateRangeMake(minimum, maxFPS, maxFPS);
         self.displayLink.preferredFrameRateRange = range;
     } else {
         self.displayLink.preferredFramesPerSecond = maxFPS;
@@ -175,79 +181,95 @@ typedef CFDictionaryRef (*IOPSGetPowerSourceDescriptionFn)(CFTypeRef blob, CFTyp
     [self sampleNetwork];
 }
 
-#pragma mark - Battery / temperature / power (IOKit power sources)
+#pragma mark - Battery / temperature / power (IORegistry)
+
+// Returns YES when at least one value was read from the property table.
+- (BOOL)consumeBatteryProperties:(CFDictionaryRef)props {
+    BOOL got = NO;
+
+    // Battery temperature. The registry reports centi-degrees
+    // (e.g. 3300 = 33 °C); an already-Celsius value passes through.
+    CFNumberRef temp = CFDictionaryGetValue(props, CFSTR("Temperature"));
+    if (temp) {
+        double t = 0;
+        if (CFNumberGetValue(temp, kCFNumberDoubleType, &t) && t > -100.0 && t < 10000.0) {
+            if (t > 100.0) t /= 100.0;
+            if (t > -20.0 && t < 100.0) {
+                self.temperatureC = t;
+                got = YES;
+            }
+        }
+    }
+
+    // Instantaneous battery power: Voltage [mV] × Amperage [mA].
+    // InstantAmperage is preferred; Amperage is the same unit averaged.
+    CFNumberRef voltage = CFDictionaryGetValue(props, CFSTR("Voltage"));
+    CFNumberRef amperage = CFDictionaryGetValue(props, CFSTR("InstantAmperage"));
+    if (!amperage) amperage = CFDictionaryGetValue(props, CFSTR("Amperage"));
+    if (voltage && amperage) {
+        double mv = 0, ma = 0;
+        if (CFNumberGetValue(voltage, kCFNumberDoubleType, &mv) &&
+            CFNumberGetValue(amperage, kCFNumberDoubleType, &ma) && mv > 0) {
+            double watts = fabs(mv * ma) / 1000000.0;
+            if (watts < 100) {
+                self.powerWatts = watts;
+                got = YES;
+            }
+        }
+    }
+
+    // Battery level (percent).
+    CFNumberRef cap = CFDictionaryGetValue(props, CFSTR("CurrentCapacity"));
+    if (cap) {
+        double pct = 0;
+        if (CFNumberGetValue(cap, kCFNumberDoubleType, &pct) && pct >= 0 && pct <= 100) {
+            self.batteryPercent = pct;
+            got = YES;
+        }
+    }
+
+    return got;
+}
 
 - (void)samplePowerSource {
-    static IOPSCopyPowerSourcesInfoFn copyInfo = NULL;
-    static IOPSCopyPowerSourcesListFn copyList = NULL;
-    static IOPSGetPowerSourceDescriptionFn getDescription = NULL;
+    static IOServiceMatchingFn serviceMatching = NULL;
+    static IOServiceGetMatchingServiceFn getService = NULL;
+    static IORegistryEntryCreateCFPropertiesFn createProps = NULL;
+    static IOObjectReleaseFn objectRelease = NULL;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         void *handle = dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_LAZY);
         if (!handle) return;
-        copyInfo = (IOPSCopyPowerSourcesInfoFn)dlsym(handle, "IOPSCopyPowerSourcesInfo");
-        copyList = (IOPSCopyPowerSourcesListFn)dlsym(handle, "IOPSCopyPowerSourcesList");
-        getDescription = (IOPSGetPowerSourceDescriptionFn)dlsym(handle, "IOPSGetPowerSourceDescription");
+        serviceMatching = (IOServiceMatchingFn)dlsym(handle, "IOServiceMatching");
+        getService = (IOServiceGetMatchingServiceFn)dlsym(handle, "IOServiceGetMatchingService");
+        createProps = (IORegistryEntryCreateCFPropertiesFn)dlsym(handle, "IORegistryEntryCreateCFProperties");
+        objectRelease = (IOObjectReleaseFn)dlsym(handle, "IOObjectRelease");
     });
 
-    BOOL found = NO;
-    if (copyInfo && copyList && getDescription) {
-        CFTypeRef blob = copyInfo();
-        if (blob) {
-            CFArrayRef list = copyList(blob);
-            if (list) {
-                if (CFArrayGetCount(list) > 0) {
-                    CFDictionaryRef desc = getDescription(blob, CFArrayGetValueAtIndex(list, 0));
-                    if (desc) {
-                        // Battery level (percent).
-                        CFNumberRef current = CFDictionaryGetValue(desc, CFSTR("Current Capacity"));
-                        if (current) {
-                            double pct = 0;
-                            if (CFNumberGetValue(current, kCFNumberDoubleType, &pct) && pct >= 0 && pct <= 100) {
-                                self.batteryPercent = pct;
-                                found = YES;
-                            }
-                        }
+    if (serviceMatching && getService && createProps && objectRelease) {
+        // AppleSmartBattery carries the richest table; the generic
+        // IOPMPowerSource node is the fallback with the same keys.
+        for (NSString *cls in @[@"AppleSmartBattery", @"IOPMPowerSource"]) {
+            CFMutableDictionaryRef matching = serviceMatching(cls.UTF8String);
+            if (!matching) continue;
+            // IOServiceGetMatchingService consumes one reference to matching.
+            io_service_t_c service = getService(kIOMasterPortDefault, matching);
+            if (!service) continue;
 
-                        // Battery temperature. iOS reports centi-degrees
-                        // (e.g. 3300 = 33 °C); an already-Celsius value
-                        // passes through the normalisation untouched.
-                        CFNumberRef temp = CFDictionaryGetValue(desc, CFSTR("Temperature"));
-                        if (temp) {
-                            double t = 0;
-                            if (CFNumberGetValue(temp, kCFNumberDoubleType, &t) && t > -100.0 && t < 10000.0) {
-                                if (t > 100.0) t /= 100.0;
-                                if (t > -20.0 && t < 100.0) {
-                                    self.temperatureC = t;
-                                    found = YES;
-                                }
-                            }
-                        }
-
-                        // Instantaneous battery power: Voltage [mV] × Amperage [mA].
-                        CFNumberRef voltage = CFDictionaryGetValue(desc, CFSTR("Voltage"));
-                        CFNumberRef amperage = CFDictionaryGetValue(desc, CFSTR("Amperage"));
-                        if (voltage && amperage) {
-                            double mv = 0, ma = 0;
-                            if (CFNumberGetValue(voltage, kCFNumberDoubleType, &mv) &&
-                                CFNumberGetValue(amperage, kCFNumberDoubleType, &ma) && mv > 0) {
-                                double watts = fabs(mv * ma) / 1000000.0;
-                                if (watts < 100) {
-                                    self.powerWatts = watts;
-                                    found = YES;
-                                }
-                            }
-                        }
-                    }
-                }
-                CFRelease(list);
+            CFMutableDictionaryRef props = NULL;
+            if (createProps(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS && props) {
+                BOOL got = [self consumeBatteryProperties:props];
+                CFRelease(props);
+                objectRelease(service);
+                if (got) return;
+            } else {
+                objectRelease(service);
             }
-            CFRelease(blob);
         }
     }
 
     // Fallback for the battery level only: UIDevice works in every process.
-    if (!found && self.batteryPercent < 0) {
+    if (self.batteryPercent < 0) {
         UIDevice *device = [UIDevice currentDevice];
         device.batteryMonitoringEnabled = YES;
         double level = device.batteryLevel; // 0.0 – 1.0, -1 when unavailable

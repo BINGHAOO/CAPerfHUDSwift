@@ -246,4 +246,14 @@ NSString * const kCAPerfHUDSettingsChangedNotification = @"com.binghaoo.caperfhu
     return val ? [val boolValue] : NO;
 }
 
+- (NSInteger)textAlignment {
+    id val = [self objectForKey:@"textAlignment"];
+    return val ? [val integerValue] : 1;
+}
+
+- (BOOL)autoHeight {
+    id val = [self objectForKey:@"autoHeight"];
+    return val ? [val boolValue] : YES;
+}
+
 @end

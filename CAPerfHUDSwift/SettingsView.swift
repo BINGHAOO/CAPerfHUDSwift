@@ -88,6 +88,16 @@ struct SettingsView: View {
                 format: "%.0f pt"
             )
 
+            Toggle(isOn: $settings.autoHeight) {
+                Text(loc.string(.autoHeight))
+            }
+
+            Picker(loc.string(.textAlignment), selection: $settings.textAlignment) {
+                Text(loc.string(.alignLeft)).tag(0)
+                Text(loc.string(.alignCenter)).tag(1)
+                Text(loc.string(.alignRight)).tag(2)
+            }
+
             sliderRow(
                 title: loc.string(.fontSize),
                 value: $settings.fontSize,

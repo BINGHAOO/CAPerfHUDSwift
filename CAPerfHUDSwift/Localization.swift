@@ -119,6 +119,11 @@ enum L10n {
     case metricPower
     case metricNetwork
     case metricBattery
+    case textAlignment
+    case alignLeft
+    case alignCenter
+    case alignRight
+    case autoHeight
 
     // MARK: - About
     case appName
@@ -246,6 +251,11 @@ extension L10n {
         case .metricPower: return "Power draw"
         case .metricNetwork: return "Network speed"
         case .metricBattery: return "Battery level"
+        case .textAlignment: return "Text Alignment"
+        case .alignLeft: return "Left"
+        case .alignCenter: return "Center"
+        case .alignRight: return "Right"
+        case .autoHeight: return "Auto-fit Height"
 
         // About
         case .appName: return "CAPerfHUDSwift"
@@ -363,6 +373,11 @@ extension L10n {
         case .metricPower: return "实时功耗"
         case .metricNetwork: return "网速"
         case .metricBattery: return "电池电量"
+        case .textAlignment: return "文字对齐"
+        case .alignLeft: return "居左"
+        case .alignCenter: return "居中"
+        case .alignRight: return "居右"
+        case .autoHeight: return "自适应高度"
 
         // About
         case .appName: return "CAPerfHUDSwift"

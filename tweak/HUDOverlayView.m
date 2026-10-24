@@ -86,10 +86,11 @@
         [[HUDMetrics sharedMetrics] stop];
     }
 
-    // Resize
+    // Resize. With auto-fit height the panel height is driven by the text
+    // (see updateAutoHeight), so only the width is taken from preferences.
     CGRect frame = self.frame;
     frame.size.width = prefs.windowWidth;
-    frame.size.height = prefs.windowHeight;
+    if (!prefs.autoHeight) frame.size.height = prefs.windowHeight;
     self.frame = frame;
     _label.frame = self.bounds;
 
@@ -111,6 +112,15 @@
     // Text
     _label.font = [UIFont monospacedDigitSystemFontOfSize:prefs.fontSize weight:UIFontWeightMedium];
     _label.textColor = [self colorFromHex:prefs.textColorHex];
+    _label.textAlignment = [self alignmentForIndex:prefs.textAlignment];
+}
+
+- (NSTextAlignment)alignmentForIndex:(NSInteger)idx {
+    switch (idx) {
+        case 0:  return NSTextAlignmentLeft;
+        case 2:  return NSTextAlignmentRight;
+        default: return NSTextAlignmentCenter;
+    }
 }
 
 #pragma mark - Dragging
@@ -201,6 +211,28 @@ static NSString *FormattedSpeed(double kbps) {
         [lines addObject:@"No metrics selected"];
     }
     _label.text = [lines componentsJoinedByString:@"\n"];
+
+    [self updateAutoHeight];
+}
+
+// Grows (or shrinks) the panel so every selected metric line is visible.
+// The top edge stays anchored where the user dragged it.
+- (void)updateAutoHeight {
+    if (![HUDPreferences sharedPreferences].autoHeight) return;
+
+    CGSize fit = [_label sizeThatFits:CGSizeMake(self.bounds.size.width, CGFLOAT_MAX)];
+    CGFloat needed = MAX(fit.height, _label.font.lineHeight);
+
+    // Never grow past the bottom of the screen.
+    CGFloat maxH = [UIScreen mainScreen].bounds.size.height - self.frame.origin.y - 8;
+    needed = MIN(needed, MAX(maxH, _label.font.lineHeight));
+
+    if (fabs(self.frame.size.height - needed) > 0.5) {
+        CGRect f = self.frame;
+        f.size.height = needed;
+        self.frame = f;
+    }
+    _label.frame = self.bounds;
 }
 
 #pragma mark - Helpers

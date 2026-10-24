@@ -45,4 +45,9 @@ extern NSString * const kCAPerfHUDSettingsChangedNotification;
 @property (nonatomic, readonly) BOOL showNetwork;
 @property (nonatomic, readonly) BOOL showBattery;
 
+// Text alignment inside the panel: 0 = left, 1 = center, 2 = right.
+@property (nonatomic, readonly) NSInteger textAlignment;
+// Grow the panel height to fit the selected metrics automatically.
+@property (nonatomic, readonly) BOOL autoHeight;
+
 @end
