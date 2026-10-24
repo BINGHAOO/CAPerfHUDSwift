@@ -328,6 +328,24 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
 - (void)samplePanelRefreshRate {
     EnsureIOKitSymbols();
 
+    // Some firmware/OS builds expose the current panel rate via sysctl.
+    // Cheap to probe, no side effects when the key is absent.
+    static const char *rateNames[] = {
+        "hw.panelrefreshrate", "hw.panel_refresh_rate",
+        "hw.displayrefreshrate", "kern.displayrefreshrate"
+    };
+    for (size_t n = 0; n < sizeof(rateNames) / sizeof(rateNames[0]); n++) {
+        int32_t v = 0;
+        size_t sz = sizeof(v);
+        if (sysctlbyname(rateNames[n], &v, &sz, NULL, 0) == 0 && v > 0 &&
+            [self isPlausiblePanelRate:(uint32_t)v]) {
+            self.panelRefreshRate = v;
+            self.hasPanelRefreshRate = YES;
+            self.panelScanSummary = [NSString stringWithFormat:@"sysctl:%s=%d", rateNames[n], v];
+            return;
+        }
+    }
+
     NSMutableArray<NSString *> *summary = [NSMutableArray array];
     double displayRefreshVal = -1; // "current panel rate" keys – highest trust
     double otherVal = -1;          // any other plausible rate key
@@ -413,7 +431,20 @@ static BOOL CopyFirstServiceProperties(NSString *cls, CFMutableDictionaryRef *ou
                                 Boolean bv = CFBooleanGetValue((CFBooleanRef)values[i]);
                                 [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=%@", cls, idx, key, bv ? @"true" : @"false"]];
                             } else {
-                                [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<type %lu>", cls, idx, key, (unsigned long)CFGetTypeID(values[i])]];
+                                // Unknown/private CFType (IOMFB uses custom
+                                // types – probed "IOMFBDisplayRefresh" shows
+                                // up as a bare typeID). CFCopyDescription
+                                // works on every CFType and usually reveals
+                                // the actual content (URLs, strings, custom
+                                // object dumps), which is the fastest way to
+                                // identify what the driver is really holding.
+                                CFStringRef desc = CFCopyDescription(values[i]);
+                                NSString *s = desc ? (__bridge_transfer NSString *)desc : @"<null>";
+                                s = [s stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
+                                if (s.length > 200) {
+                                    s = [[s substringToIndex:200] stringByAppendingString:@"..."];
+                                }
+                                [summary addObject:[NSString stringWithFormat:@"%@[%d].%@=<type %lu> %@", cls, idx, key, (unsigned long)CFGetTypeID(values[i]), s]];
                             }
 
                             if (parsed > 0) {
